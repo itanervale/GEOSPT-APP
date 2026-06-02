@@ -207,6 +207,18 @@ export default function Header() {
           </BotaoPrim>
           <BotaoPrim
             tipo="secundario"
+            onClick={() =>
+              window.open(
+                import.meta.env.BASE_URL + 'manual.html',
+                '_blank',
+                'noopener,noreferrer'
+              )
+            }
+          >
+            📖 Manual
+          </BotaoPrim>
+          <BotaoPrim
+            tipo="secundario"
             onClick={() => fileInputRef.current?.click()}
           >
             📥 Importar

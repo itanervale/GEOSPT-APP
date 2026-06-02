@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual de Utilização — GeoSPT</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; scroll-behavior: smooth; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #1f2937; background: #f5f6fa;
+    display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* Top Bar */
+  #topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    background: #1e3a8a; color: #fff;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 52px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); gap: 16px; }
+  #topbar .tb-title { font-size: 1rem; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+  #topbar .tb-date  { font-size: 0.78rem; color: #93c5fd; white-space: nowrap; }
+
+  /* Busca */
+  #search-wrap { position: relative; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  #search-input { width: 220px; height: 30px; border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 15px; background: rgba(255,255,255,0.12); color: #fff; font-size: 0.82rem;
+    padding: 0 12px; outline: none; transition: width .2s, background .2s; }
+  #search-input::placeholder { color: rgba(255,255,255,0.5); }
+  #search-input:focus { width: 280px; background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.6); }
+  #search-clear { background: none; border: none; color: rgba(255,255,255,0.55); font-size: 0.9rem;
+    cursor: pointer; line-height: 1; display: none; padding: 0 2px; flex-shrink: 0; }
+  #search-clear:hover { color: #fff; }
+  #search-count { font-size: 0.75rem; color: #93c5fd; white-space: nowrap; min-width: 64px; text-align: right; }
+  #search-panel { display: none; position: fixed; top: 52px; right: 0;
+    width: 380px; max-height: calc(100vh - 92px); background: #fff;
+    border-left: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;
+    box-shadow: -4px 4px 16px rgba(0,0,0,0.12); z-index: 900; overflow-y: auto; font-size: 0.85rem; }
+  #search-panel.open { display: block; }
+  #search-panel-header { padding: 12px 16px; background: #f8faff; border-bottom: 1px solid #e2e8f0;
+    font-size: 0.78rem; color: #64748b; display: flex; justify-content: space-between; align-items: center; }
+  #search-panel-header strong { color: #1e40af; }
+  #search-panel-close { background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.1rem; line-height: 1; padding: 0; }
+  #search-panel-close:hover { color: #1e40af; }
+  .sr-item { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background .15s; }
+  .sr-item:hover { background: #eff6ff; }
+  .sr-item-section { font-size: 0.72rem; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+  .sr-item-ctx { color: #4b5563; font-size: 0.8rem; line-height: 1.5; }
+  .sr-item-ctx mark { background: #fef08a; color: #1f2937; border-radius: 2px; padding: 0 2px; }
+  #search-empty { padding: 24px 16px; text-align: center; color: #94a3b8; font-size: 0.85rem; }
+  mark.hl { background: #fef08a; color: #1f2937; border-radius: 2px; padding: 0 1px; }
+  mark.hl.hl-current { background: #f97316; color: #fff; }
+
+  /* Layout */
+  #layout { display: flex; margin-top: 52px; min-height: calc(100vh - 52px - 40px); }
+
+  /* Sidebar */
+  #sidebar { width: 270px; min-width: 270px; background: #fff; border-right: 1px solid #e5e7eb;
+    padding: 20px 0 40px; position: fixed; top: 52px; left: 0; bottom: 40px;
+    overflow-y: auto; font-size: 0.82rem; }
+  #sidebar .sb-header { padding: 10px 18px 8px; font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: .08em; color: #6b7280; font-weight: 700; border-bottom: 1px solid #f3f4f6; margin-bottom: 6px; }
+  #sidebar a { display: block; padding: 5px 18px; color: #374151; text-decoration: none;
+    line-height: 1.5; border-left: 3px solid transparent; transition: background .15s, border-color .15s; }
+  #sidebar a:hover, #sidebar a.active { background: #eff6ff; color: #1e40af; border-left-color: #1e40af; }
+  #sidebar a.l1 { font-weight: 700; margin-top: 4px; }
+  #sidebar a.l2 { padding-left: 30px; color: #4b5563; }
+  #sidebar a.l3 { padding-left: 42px; color: #6b7280; font-size: 0.78rem; }
+
+  /* Main */
+  #main { margin-left: 270px; flex: 1; padding: 36px 44px 60px; max-width: 900px; }
+
+  /* Typography */
+  h1 { font-size: 1.7rem; color: #1e3a8a; margin-bottom: 10px; line-height: 1.3; }
+  h2 { font-size: 1.25rem; color: #1e40af; margin: 38px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #dbeafe; }
+  h3 { font-size: 1.05rem; color: #1e40af; margin: 26px 0 10px; }
+  h4 { font-size: 0.95rem; color: #374151; margin: 18px 0 8px; font-weight: 700; }
+  p  { line-height: 1.75; margin-bottom: 12px; color: #374151; }
+  ul, ol { margin: 8px 0 14px 22px; }
+  li { line-height: 1.7; margin-bottom: 4px; color: #374151; }
+  code { font-family: "Courier New", monospace; font-size: 0.88em; background: #f1f5f9;
+    border: 1px solid #e2e8f0; padding: 1px 5px; border-radius: 3px; color: #0f172a; }
+  pre { background: #1e293b; color: #e2e8f0; padding: 14px 18px; border-radius: 6px;
+    overflow-x: auto; font-size: 0.85rem; line-height: 1.6; margin: 12px 0 18px; }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+  strong { color: #111827; }
+  hr { border: none; border-top: 1px solid #e5e7eb; margin: 28px 0; }
+
+  /* Tables */
+  .tbl-wrap { overflow-x: auto; margin: 14px 0 22px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  thead th { background: #1e3a8a; color: #fff; padding: 9px 12px; text-align: left; font-weight: 600; }
+  tbody tr:nth-child(even) { background: #f8faff; }
+  tbody td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; color: #374151; vertical-align: top; }
+  tbody tr:hover { background: #eff6ff; }
+
+  /* Callouts */
+  .callout { border-left: 5px solid; padding: 14px 18px; margin: 18px 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; line-height: 1.7; }
+  .callout .callout-title { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .callout.danger  { background: #fff1f2; border-color: #dc2626; }
+  .callout.danger  .callout-title { color: #dc2626; }
+  .callout.warning { background: #fffbeb; border-color: #d97706; }
+  .callout.warning .callout-title { color: #d97706; }
+  .callout.info    { background: #eff6ff; border-color: #2563eb; }
+  .callout.info    .callout-title { color: #2563eb; }
+  .callout.tip     { background: #f0fdf4; border-color: #16a34a; }
+  .callout.tip     .callout-title { color: #16a34a; }
+
+  /* Figuras */
+  figure.screenshot { margin: 20px 0 24px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #f8faff; }
+  figure.screenshot img, figure.screenshot svg { display: block; width: 100%; height: auto; }
+  figure.screenshot figcaption { padding: 8px 14px; font-size: 0.82rem; color: #64748b;
+    border-top: 1px solid #e2e8f0; background: #f1f5f9; font-style: italic; }
+
+  /* Capa */
+  #capa { background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%); color: #fff;
+    border-radius: 10px; padding: 40px 44px; margin-bottom: 40px; }
+  #capa h1 { color: #fff; font-size: 1.6rem; margin-bottom: 6px; }
+  #capa .capa-sub { font-size: 0.95rem; color: #bfdbfe; margin-bottom: 20px; }
+  #capa .capa-meta { font-size: 0.85rem; color: #93c5fd; }
+  #capa .capa-aviso { background: rgba(220,38,38,0.25); border: 1px solid rgba(220,38,38,0.6);
+    border-radius: 6px; padding: 12px 16px; margin-top: 20px; font-size: 0.88rem; color: #fecaca; }
+  #capa .capa-aviso strong { color: #fff; }
+
+  /* Steps */
+  .steps { counter-reset: step; list-style: none; margin: 12px 0 18px 0; }
+  .steps li { counter-increment: step; padding: 8px 12px 8px 44px; position: relative;
+    margin-bottom: 6px; background: #f8faff; border-radius: 5px; border: 1px solid #e0e7ff; }
+  .steps li::before { content: counter(step); position: absolute; left: 12px; top: 50%;
+    transform: translateY(-50%); background: #1e40af; color: #fff; width: 22px; height: 22px;
+    border-radius: 50%; font-size: 0.78rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.78rem; font-weight: 700; vertical-align: middle; }
+  .badge.critica { background: #fee2e2; color: #991b1b; }
+  .badge.alta    { background: #ffedd5; color: #9a3412; }
+  .badge.media   { background: #fef9c3; color: #854d0e; }
+  .badge.baixa   { background: #dcfce7; color: #166534; }
+
+  /* Footer */
+  #footer { position: fixed; bottom: 0; left: 0; right: 0; height: 40px; background: #1e3a8a;
+    color: #93c5fd; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; z-index: 999; padding: 0 16px; text-align: center; }
+
+  /* Print */
+  @media print {
+    #topbar, #sidebar, #footer, #search-panel { display: none !important; }
+    #main { margin-left: 0; padding: 10mm; max-width: none; }
+    #layout { margin-top: 0; }
+    .callout { break-inside: avoid; }
+    figure.screenshot { break-inside: avoid; }
+    h2 { break-before: page; }
+    #capa { break-after: avoid; }
+  }
+
+  :target::before { content: ""; display: block; height: 70px; margin-top: -70px; }
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <span class="tb-title">Manual de Utilização — GeoSPT</span>
+  <div id="search-wrap">
+    <input id="search-input" type="search" placeholder="Buscar no manual… (Ctrl+K)" autocomplete="off" spellcheck="false">
+    <button id="search-clear" title="Limpar">&#x2715;</button>
+    <span id="search-count"></span>
+  </div>
+  <span class="tb-date">v2.0.7 &nbsp;·&nbsp; junho/2026</span>
+</header>
+
+<div id="search-panel">
+  <div id="search-panel-header">
+    <span id="search-panel-label">Resultados</span>
+    <button id="search-panel-close" title="Fechar">&#x2715;</button>
+  </div>
+  <div id="search-results"></div>
+</div>
+
+<div id="layout">
+
+<nav id="sidebar">
+  <div class="sb-header">Sumário</div>
+  <a href="#capa"  class="l1">Capa</a>
+  <a href="#s1"    class="l1">1. Visão geral e fluxo</a>
+  <a href="#s2"    class="l1">2. Conceitos básicos</a>
+  <a href="#s3"    class="l1">3. Instalação e execução</a>
+  <a href="#s4"    class="l1">4. Primeiro uso: do zero ao PDF</a>
+  <a href="#s5"    class="l1">5. Manual das abas</a>
+  <a href="#s5-1"  class="l2">5.1 Aba 1 — Obra</a>
+  <a href="#s5-2"  class="l2">5.2 Aba 2 — Sondagens</a>
+  <a href="#s5-3"  class="l2">5.3 Aba 3 — Compatibilização</a>
+  <a href="#s5-4"  class="l2">5.4 Aba 4 — Análise</a>
+  <a href="#s5-5"  class="l2">5.5 Aba 5 — Estacas</a>
+  <a href="#s5-6"  class="l2">5.6 Aba 6 — Capacidade</a>
+  <a href="#s5-7"  class="l2">5.7 Aba 7 — Saídas</a>
+  <a href="#s6"    class="l1">6. O Corte Esquemático</a>
+  <a href="#s6-1"  class="l2">6.1 Montar a seleção</a>
+  <a href="#s6-2"  class="l2">6.2 Camadas (toggles)</a>
+  <a href="#s6-3"  class="l2">6.3 Exportar e aviso</a>
+  <a href="#s7"    class="l1">7. Salvar e abrir uma obra</a>
+  <a href="#s8"    class="l1">8. Perguntas frequentes</a>
+  <a href="#s9"    class="l1">9. Glossário</a>
+</nav>
+
+<main id="main">
+
+<!-- CAPA -->
+<section id="capa">
+  <h1>Manual de Utilização — GeoSPT</h1>
+  <p class="capa-sub">Análise de sondagens SPT e cálculo de capacidade de carga de estacas (Décourt-Quaresma e Aoki-Velloso)</p>
+  <p class="capa-meta">Aplicação: GeoSPT v2.0.7 &nbsp;|&nbsp; 7 abas &nbsp;·&nbsp; 4 modos de cálculo &nbsp;·&nbsp; corte esquemático interpretado<br>NBR 6122:2022 &nbsp;·&nbsp; Emissão deste manual: junho/2026</p>
+  <div class="capa-aviso">
+    <strong>&#x26A0; Aviso técnico.</strong> O GeoSPT realiza estimativas <strong>semiempíricas</strong> de capacidade de carga. Os resultados são uma <strong>ferramenta de apoio</strong> e <strong>não substituem a análise nem a responsabilidade técnica do projetista</strong> (NBR 6122). Todo dimensionamento deve ser conferido por engenheiro habilitado.
+  </div>
+</section>
+
+<p>O GeoSPT é uma aplicação web que roda inteiramente no navegador, organizando o fluxo de um projeto geotécnico em sete abas sequenciais — da identificação da obra até a exportação dos memoriais. Ele compatibiliza múltiplos furos de sondagem por cota absoluta, estima a capacidade de carga das estacas em quatro modos de cálculo e gera um corte esquemático interpretado do subsolo.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Dica de navegação</div>
+  Use o campo de busca no topo (atalho <code>Ctrl+K</code>) para localizar qualquer termo deste manual. <code>Enter</code> avança entre as ocorrências; <code>Esc</code> limpa a busca.
+</div>
+
+<!-- 1. VISÃO GERAL -->
+<h2 id="s1">1. Visão geral e fluxo de trabalho</h2>
+<p>A ordem das abas é o fluxo de trabalho sugerido, mas a navegação é livre — você pode pular entre abas a qualquer momento. A barra superior dá acesso ao exemplo de demonstração e às funções de importar/exportar a obra.</p>
+
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>#</th><th>Aba</th><th>O que faz</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><strong>Obra</strong></td><td>Identificação do projeto (nome, local, responsável técnico) que alimenta os memoriais.</td></tr>
+    <tr><td>2</td><td><strong>Sondagens</strong></td><td>Cadastro dos furos SPT (NSPT por metro, cota de topo, nível d'água).</td></tr>
+    <tr><td>3</td><td><strong>Compat.</strong> (Compatibilização)</td><td>Alinhamento dos furos por cota absoluta, gerando um perfil consolidado.</td></tr>
+    <tr><td>4</td><td><strong>Análise</strong></td><td>Alertas críticos automáticos (A1–A10) e sugestão de agrupamento em domínios geotécnicos.</td></tr>
+    <tr><td>5</td><td><strong>Estacas</strong></td><td>Cadastro das estacas e configurações globais de cálculo. Daqui se abre o Corte Esquemático.</td></tr>
+    <tr><td>6</td><td><strong>Capacidade</strong></td><td>Cálculo da capacidade de carga em 4 modos + comparativo.</td></tr>
+    <tr><td>7</td><td><strong>Saídas</strong></td><td>Exportação dos resultados em XLSX, PDF e JSON.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout warning">
+  <div class="callout-title">O app não persiste dados</div>
+  O GeoSPT <strong>não salva nada no navegador</strong>. Se você fechar a aba sem exportar, perde o trabalho. Exporte a obra em <strong>JSON</strong> (botão <code>&#x1F4E4; Exportar &#x25BE;</code> no topo) com frequência — esse arquivo é a sua "obra salva". Veja a <a href="#s7">seção 7</a>.
+</div>
+
+<div class="callout tip">
+  <div class="callout-title">Privacidade — processamento 100% local</div>
+  Todo o processamento acontece na sua máquina. Nenhum dado é enviado a servidores; ele só sai do computador se você exportar os arquivos.
+</div>
+
+<!-- 2. CONCEITOS BÁSICOS -->
+<h2 id="s2">2. Conceitos básicos</h2>
+<p>Três termos aparecem em todo o app e convém fixá-los antes de começar:</p>
+
+<h4>NSPT</h4>
+<p>Número de golpes do ensaio SPT por metro de profundidade. É o dado bruto de cada sondagem — quanto maior o NSPT, em regra, mais resistente é o solo naquele trecho. <em>Analogia:</em> pense no NSPT como a "dureza" que o terreno opõe à cravação, medida metro a metro como degraus de uma escada.</p>
+
+<h4>Cota absoluta</h4>
+<p>A altura de cada ponto em relação a um referencial (por exemplo, o nível do mar). Como cada furo tem uma cota de topo diferente, a compatibilização alinha tudo pela <strong>cota</strong>, não pela profundidade. <em>Analogia:</em> é como comparar prédios pela altitude do andar, e não pelo número do andar — só assim o "3º andar" de um prédio mais alto fica na mesma linha do "5º andar" do vizinho.</p>
+
+<h4>Família de solo</h4>
+<p>Classificação simplificada em três grupos, usada pelo corte esquemático para decidir quais camadas se conectam entre furos vizinhos:</p>
+<ul>
+  <li><strong>Coesivo</strong> — argilas;</li>
+  <li><strong>Granular</strong> — areias;</li>
+  <li><strong>Intermediário</strong> — siltes.</li>
+</ul>
+
+<!-- 3. INSTALAÇÃO -->
+<h2 id="s3">3. Instalação e execução</h2>
+<p><strong>Pré-requisito:</strong> Node.js versão 18 ou superior (recomendado 20+).</p>
+<pre><code># 1. Instalar as dependências (cria a pasta node_modules)
+npm install
+
+# 2. Rodar em modo desenvolvimento — abre em http://localhost:5173
+npm run dev
+
+# 3. Gerar a versão de produção (saída na pasta dist/)
+npm run build
+
+# 4. Pré-visualizar a versão de produção localmente
+npm run preview</code></pre>
+
+<div class="callout tip">
+  <div class="callout-title">Caminho sem espaços</div>
+  Evite espaços no caminho da pasta do projeto (por exemplo, use <code>geospt-vite</code> em vez de <code>geospt vite</code>). Espaços já são tratados no <code>vite.config.js</code>, mas continuam sendo boa prática para evitar erros de resolução de módulos no Windows.
+</div>
+
+<div class="callout info">
+  <div class="callout-title">Abrir este manual a partir do app</div>
+  Se o app exibir o botão <code>&#x1F4D6; Manual</code> na barra superior, ele abre este documento em uma <strong>aba separada</strong> do navegador, para consulta simultânea ao uso. Para que isso funcione, o arquivo do manual e a pasta de imagens devem estar publicados junto do app (em <code>public/</code>).
+</div>
+
+<!-- 4. PRIMEIRO USO -->
+<h2 id="s4">4. Primeiro uso: do zero ao PDF</h2>
+<p>Roteiro mínimo para percorrer o app inteiro, da abertura à entrega de um memorial. Para ver tudo funcionando rapidamente, comece carregando o exemplo (passo 1).</p>
+
+<ol class="steps">
+  <li><strong>(Opcional) Carregar o exemplo.</strong> Clique em <code>&#x1F4C2; Balsas (demo)</code> no topo para popular o app com 5 sondagens e 4 estacas reais. Útil para conhecer as telas sem digitar nada.</li>
+  <li><strong>Aba 1 — Obra.</strong> Preencha nome da obra, localização e responsável técnico (esses campos aparecem nos memoriais).</li>
+  <li><strong>Aba 2 — Sondagens.</strong> Cadastre <strong>pelo menos 2 furos</strong>: nome, cota de topo, profundidade, critério de paralisação, nível d'água e as leituras de NSPT metro a metro.</li>
+  <li><strong>Aba 3 — Compatibilização.</strong> Ajuste a janela de compatibilização se necessário e clique em <code>Recalcular</code>. Confira a tabela densa e o perfil consolidado.</li>
+  <li><strong>Aba 4 — Análise.</strong> Leia os alertas A1–A10. Se quiser agrupar furos semelhantes, clique em <code>Calcular</code> na sugestão de domínios e aplique.</li>
+  <li><strong>Aba 5 — Estacas.</strong> Adicione uma estaca (tipo, diâmetro, cota de arrasamento, carga prevista) e revise as configurações globais de cálculo.</li>
+  <li><strong>Aba 6 — Capacidade.</strong> Selecione a estaca e o modo de cálculo. Leia a Q<sub>adm</sub>, a carga prevista e a margem (colorida pelo sinal).</li>
+  <li><strong>Aba 7 — Saídas.</strong> Exporte o <strong>JSON</strong> (obra salva), o <strong>XLSX</strong> (memoriais) e/ou o <strong>PDF</strong> (documento de entrega).</li>
+</ol>
+
+<div class="callout warning">
+  <div class="callout-title">Antes de fechar a aba</div>
+  Exporte o JSON da obra (passo 8). Sem isso, o trabalho é perdido — o app não guarda nada localmente.
+</div>
+
+<!-- 5. MANUAL DAS ABAS -->
+<h2 id="s5">5. Manual das abas</h2>
+<p>Cada seção abaixo descreve o que a aba faz, seus principais controles e um passo a passo de uso.</p>
+
+<!-- 5.1 OBRA -->
+<h3 id="s5-1">5.1 Aba 1 — Obra</h3>
+<p>Formulário de cabeçalho do projeto. Os campos preenchidos aqui aparecem nos memoriais exportados (Aba 7). No rodapé da aba há um diagnóstico técnico da engine, discreto e expansível.</p>
+<p><strong>Campos:</strong></p>
+<ul>
+  <li><strong>Nome da obra</strong> — identificação principal (aparece no topo do app);</li>
+  <li><strong>Localização</strong> — Município/UF;</li>
+  <li><strong>Data de cadastro</strong>;</li>
+  <li><strong>Sistema de coordenadas</strong> — referencial usado nas coordenadas de furos e estacas;</li>
+  <li><strong>Responsável técnico</strong> — nome e CREA;</li>
+  <li><strong>Observações</strong> — notas livres sobre a obra, sondagens ou restrições do terreno.</li>
+</ul>
+
+<figure class="screenshot">
+  <img src="imagens-manual/01_aba-obra.png" alt="Tela da Aba 1 — Obra, com o formulário de identificação do projeto" onerror="imgFallback(this,'imagens-manual/01_aba-obra.png')">
+  <figcaption>Aba 1 — Obra: formulário de identificação do projeto.</figcaption>
+</figure>
+
+<!-- 5.2 SONDAGENS -->
+<h3 id="s5-2">5.2 Aba 2 — Sondagens</h3>
+<p>Cadastro dos furos de sondagem SPT. Há uma barra lateral com a lista de furos e o botão <code>+ Adicionar</code>; o painel principal edita o furo selecionado; a remoção pede confirmação.</p>
+<ol class="steps">
+  <li>Clique em <code>+ Adicionar</code> na barra lateral para criar uma sondagem.</li>
+  <li>Selecione uma sondagem na lista para editá-la no painel principal.</li>
+  <li>Preencha, para cada furo: nome, cota de topo, profundidade final, critério de paralisação (ex.: impenetrável), nível d'água e as leituras de NSPT metro a metro.</li>
+  <li>Para remover, use o botão de exclusão (com confirmação).</li>
+</ol>
+
+<div class="callout info">
+  <div class="callout-title">Trecho impenetrável / NSPT acima do limite</div>
+  Conforme a NBR 6484:2020 (item 5.2.4.2), NSPT &gt; 50 indica impenetrabilidade. Ao digitar um valor acima de 50, o app abre uma confirmação e preserva os dois números: o <strong>valor real medido</strong> (ex.: 52, 60, 80) para auditoria e o <strong>valor limitado a 50</strong> usado nas fórmulas de Décourt-Quaresma e Aoki-Velloso. O trecho é marcado como impenetrável.
+</div>
+
+<div class="callout warning">
+  <div class="callout-title">Mínimo de 2 sondagens</div>
+  É necessário pelo menos <strong>2 sondagens</strong> para compatibilizar (Aba 3) e para gerar o corte esquemático. Com um único furo não há o que comparar.
+</div>
+
+<figure class="screenshot">
+  <img src="imagens-manual/02_sondagem-nspt.png" alt="Painel de uma sondagem com as leituras de NSPT metro a metro" onerror="imgFallback(this,'imagens-manual/02_sondagem-nspt.png')">
+  <figcaption>Aba 2 — Sondagens: painel de edição de um furo com as leituras de NSPT.</figcaption>
+</figure>
+
+<!-- 5.3 COMPATIBILIZAÇÃO -->
+<h3 id="s5-3">5.3 Aba 3 — Compatibilização</h3>
+<p>Alinha os furos cadastrados por <strong>cota absoluta</strong>, produzindo um perfil consolidado do subsolo.</p>
+<p><strong>Recursos:</strong></p>
+<ul>
+  <li><strong>Janela de compatibilização</strong> — um controle deslizante define a tolerância de agrupamento das cotas. A alteração fica em rascunho até você confirmar;</li>
+  <li><strong>Seletor de domínio</strong> — filtra os furos por domínio geotécnico (ver Aba 4);</li>
+  <li><strong>Botão <code>Recalcular</code></strong> — aplica os ajustes e refaz a compatibilização;</li>
+  <li><strong>Layout em duas colunas</strong> (em telas largas): tabela densa de valores à esquerda e perfil em SVG à direita.</li>
+</ul>
+<p>Se houver menos de 2 sondagens, a aba exibe um estado vazio orientando o cadastro.</p>
+
+<figure class="screenshot">
+  <img src="imagens-manual/03_compatibilizacao.png" alt="Aba de compatibilização com a tabela densa de valores e o perfil consolidado em SVG" onerror="imgFallback(this,'imagens-manual/03_compatibilizacao.png')">
+  <figcaption>Aba 3 — Compatibilização: tabela densa de valores e perfil consolidado.</figcaption>
+</figure>
+
+<!-- 5.4 ANÁLISE -->
+<h3 id="s5-4">5.4 Aba 4 — Análise</h3>
+<p>Análise crítica automática do conjunto de sondagens. A aba mostra três blocos:</p>
+<ol>
+  <li><strong>Contagem por severidade</strong> — número de alertas críticos, moderados e informativos;</li>
+  <li><strong>Lista de alertas (A1–A10)</strong> — cada alerta é um card que aponta uma possível inconsistência ou ponto de atenção;</li>
+  <li><strong>Sugestão de agrupamento em domínios</strong> — uma análise (k-means simplificado) que propõe agrupar furos semelhantes em domínios geotécnicos.</li>
+</ol>
+
+<div class="callout info">
+  <div class="callout-title">A sugestão de domínios não roda sozinha</div>
+  Clique em <code>Calcular</code> para gerá-la. Ao aplicar, o domínio sugerido é gravado em cada sondagem, permitindo filtrar cálculos por região do terreno (nas Abas 3 e 6).
+</div>
+
+<h4>Os alertas A1–A10</h4>
+<p>A análise gera alertas conforme limites técnicos. Observe duas particularidades da numeração: <strong>não existe A6</strong> (foi pulado) e, quando não há estaca cadastrada com cota de arrasamento, o alerta A9 vira a variante informativa <strong>A9_info</strong>.</p>
+
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>ID</th><th>Severidade</th><th>Título</th><th>Dispara quando</th><th>Implicação (resumo)</th></tr></thead>
+  <tbody>
+    <tr><td><strong>A1</strong></td><td><span class="badge critica">crítico</span></td><td>Furo crítico domina a envoltória</td><td>Um furo domina a envoltória inferior em mais de 60% das cotas</td><td>O resultado depende demais de um único furo; pode estar enviesado.</td></tr>
+    <tr><td><strong>A2</strong></td><td><span class="badge media">moderado</span></td><td>Inversões de resistência entre cotas adjacentes</td><td>NSPT cai mais de 5 golpes entre cotas vizinhas</td><td>Pode indicar lente mole, transição litológica ou erro de leitura. Verificar o laudo.</td></tr>
+    <tr><td><strong>A3</strong></td><td><span class="badge media">moderado</span></td><td>Subamostragem em parte do perfil</td><td>Mais de 30% das cotas têm menos de 3 furos representados</td><td>Compatibilização pouco robusta; considerar sondagem complementar.</td></tr>
+    <tr><td><strong>A4</strong></td><td><span class="badge media">moderado</span></td><td>Heterogeneidade de famílias entre furos</td><td>Mais de 20% das cotas têm famílias diferentes entre os furos</td><td>Transição lateral de litologia; avaliar perfis paralelos (Modo 2.3) ou domínios distintos.</td></tr>
+    <tr><td><strong>A5</strong></td><td><span class="badge baixa">info</span></td><td>Nível d'água não registrado</td><td>Nenhuma sondagem tem NA (inicial ou final)</td><td>Não afeta Décourt/Aoki, mas é relevante para recalques e empuxo.</td></tr>
+    <tr><td><strong>A7</strong></td><td><span class="badge media">moderado</span></td><td>Sondagens paralisadas por solicitação do contratante</td><td>Furo com critério de paralisação = solicitação do contratante</td><td>Camadas inferiores não amostradas; capacidade pode ser sub ou superestimada.</td></tr>
+    <tr><td><strong>A8</strong></td><td><span class="badge media">moderado</span></td><td>Inversão de grande magnitude</td><td>NSPT cai mais de 10 golpes entre cotas</td><td>Inversão acentuada; verificar erro de transcrição ou lente encoberta.</td></tr>
+    <tr><td><strong>A9</strong></td><td><span class="badge media">moderado</span></td><td>Aterro espesso previsto sob a estaca</td><td>Cota de arrasamento &gt; 2,5 m <strong>acima</strong> da média dos topos das sondagens</td><td>Aterro espesso; verificar material, compactação e sondagens no aterro.</td></tr>
+    <tr><td><strong>A9_info</strong></td><td><span class="badge baixa">info</span></td><td>Verificação A9/A10 pendente</td><td>Não há estaca cadastrada com cota de arrasamento</td><td>Cadastrar estaca na Aba 5 para a verificação.</td></tr>
+    <tr><td><strong>A10</strong></td><td><span class="badge media">moderado</span></td><td>Corte elevado previsto sob a estaca</td><td>Cota de arrasamento &gt; 2,5 m <strong>abaixo</strong> da média dos topos das sondagens</td><td>Corte elevado; possível desconfinamento e redução de capacidade.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<figure class="screenshot">
+  <img src="imagens-manual/04_analise-alertas.png" alt="Lista de alertas A1 a A10 e o card de sugestão de domínios geotécnicos" onerror="imgFallback(this,'imagens-manual/04_analise-alertas.png')">
+  <figcaption>Aba 4 — Análise: cards de alertas e a sugestão de agrupamento em domínios.</figcaption>
+</figure>
+
+<!-- 5.5 ESTACAS -->
+<h3 id="s5-5">5.5 Aba 5 — Estacas</h3>
+<p>Cadastro das estacas e das configurações globais de cálculo. Em telas largas, o layout tem duas colunas: à esquerda a tabela de estacas e o painel de configurações; à direita um <strong>mini-mapa</strong> com a posição de furos e estacas.</p>
+<p><strong>Operações com estacas:</strong></p>
+<ul>
+  <li><strong>Adicionar</strong> — gera o próximo nome livre (E-01, E-02…) e abre o formulário;</li>
+  <li><strong>Editar</strong> — ícone de lápis (✎) abre o formulário com os dados da estaca;</li>
+  <li><strong>Remover</strong> — ícone (✕), com confirmação.</li>
+</ul>
+<p>Para cada estaca define-se: tipo (hélice contínua, pré-moldada, raiz, etc.), diâmetro, cota de arrasamento, carga prevista e coordenadas.</p>
+
+<h4>Configurações globais de cálculo</h4>
+<p>Painel <code>&#x2699; Configurações globais de cálculo</code>:</p>
+<ul>
+  <li><strong>Desprezar atrito do último 1 m (bulbo)</strong> — prática usual; ligado por padrão;</li>
+  <li><strong>Aplicar fator redutor de ponta (Tabela 1.9)</strong> — desligado por padrão;</li>
+  <li><strong>Limitar R_p ≤ R_l (regra Décourt adicional)</strong> — desligado por padrão; é independente do tratamento de ponta abaixo.</li>
+</ul>
+<p><strong>Tratamento de ponta</strong> (exclusivo — escolha uma opção):</p>
+<ul>
+  <li><strong>R_p = calculado (padrão)</strong>;</li>
+  <li><strong>R_p = 0 e P_adm = R_l/2</strong> — NBR 6122:2022, item 8.2.1.2 (sem contato garantido);</li>
+  <li><strong>R_p = min(R_p, R_l) e P_adm = min(parcial, global)</strong> — NBR 6122:2022, item 8.2.1.2 (contato com ressalva).</li>
+</ul>
+
+<div class="callout info">
+  <div class="callout-title">Tratamento de ponta × checkbox "Limitar R_p ≤ R_l"</div>
+  As três opções de tratamento de ponta <strong>não substituem</strong> o checkbox "Limitar R_p ≤ R_l". O checkbox aplica-se ao R_p <em>depois</em> do tratamento escolhido.
+</div>
+
+<p>O painel inclui ainda o <strong>Editor de coeficientes</strong> (com presets), para ajustar os coeficientes dos métodos. A partir desta aba abre-se também o <strong>Corte Esquemático</strong> (botão <code>&#x1F4D0; Corte esquemático</code> — ver seção 6).</p>
+
+<figure class="screenshot">
+  <img src="imagens-manual/05_estacas-minimapa.png" alt="Tabela de estacas com o painel de configurações e o mini-mapa de furos e estacas" onerror="imgFallback(this,'imagens-manual/05_estacas-minimapa.png')">
+  <figcaption>Aba 5 — Estacas: tabela, configurações globais e mini-mapa.</figcaption>
+</figure>
+
+<!-- 5.6 CAPACIDADE -->
+<h3 id="s5-6">5.6 Aba 6 — Capacidade</h3>
+<p>Cálculo da capacidade de carga da estaca selecionada, com Décourt-Quaresma e Aoki-Velloso.</p>
+<ol class="steps">
+  <li>Selecione a estaca ativa.</li>
+  <li>Escolha o modo de cálculo (abas internas).</li>
+</ol>
+<p>Cada modo apresenta o resumo (Q<sub>adm</sub>, carga prevista e margem colorida pelo sinal), o detalhamento por camada e o memorial de cálculo. Quando há divergência entre Décourt-Quaresma e Aoki-Velloso, ela é sinalizada.</p>
+
+<h4>Os quatro modos de cálculo</h4>
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>Modo</th><th>Descrição</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Envoltória</strong></td><td>Usa a envoltória inferior (a mais conservadora) dos furos.</td></tr>
+    <tr><td><strong>Perfil médio</strong></td><td>Usa um perfil médio das sondagens, com submodos (veja abaixo).</td></tr>
+    <tr><td><strong>Por furo</strong></td><td>Calcula a capacidade furo a furo, individualmente.</td></tr>
+    <tr><td><strong>Interpolação</strong></td><td>Interpola entre furos conforme a posição da estaca, com pesos por cota.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Há ainda a aba <strong>Comparativo</strong>, que coloca os modos lado a lado.</p>
+
+<h4>Submodos do Perfil médio</h4>
+<ul>
+  <li><strong>2.1</strong> — perfil médio simples (médias por cota). Cotas heterogêneas (famílias distintas entre furos) são <strong>bloqueadas</strong> neste submodo por design: a engine não escolhe família automaticamente;</li>
+  <li><strong>2.2 (conservador)</strong> — submodo padrão;</li>
+  <li><strong>2.3 (perfis paralelos)</strong> — indicado para tratar cotas heterogêneas que o 2.1 bloqueia.</li>
+</ul>
+
+<div class="callout info">
+  <div class="callout-title">"Nenhuma cota atende a carga prevista"</div>
+  Significa que, com os parâmetros atuais, nenhuma profundidade de ponta atinge a carga prevista para aquela estaca. Reveja a carga prevista, o tipo/diâmetro da estaca ou as configurações de cálculo (Aba 5).
+</div>
+
+<figure class="screenshot">
+  <img src="imagens-manual/06_capacidade-memorial.png" alt="Um modo de cálculo na Aba 6, com resumo, detalhamento por camada e memorial" onerror="imgFallback(this,'imagens-manual/06_capacidade-memorial.png')">
+  <figcaption>Aba 6 — Capacidade: resumo, detalhamento por camada e memorial de um modo.</figcaption>
+</figure>
+
+<!-- 5.7 SAÍDAS -->
+<h3 id="s5-7">5.7 Aba 7 — Saídas</h3>
+<p>Exportação dos resultados. O JSON serve para reabrir a obra no app; o XLSX para análises técnicas; o PDF/HTML para documento de entrega.</p>
+
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>Formato</th><th>Conteúdo</th></tr></thead>
+  <tbody>
+    <tr><td><strong>&#x1F4CA; XLSX</strong></td><td>Planilha com memoriais (uma aba por modo de cálculo + uma comparativa) e colunas de auditoria. Abre no Excel/LibreOffice.</td></tr>
+    <tr><td><strong>&#x1F4C4; PDF</strong></td><td>Documento formatado em duas versões (compacta e completa), gerado pela função de impressão do navegador. O relatório abre em nova aba — use <strong>"Imprimir / Salvar como PDF"</strong>.</td></tr>
+    <tr><td><strong>&#x1F4BE; JSON</strong></td><td>Arquivo com todos os dados de entrada e resultados, com hashes de integridade. É o formato de "obra salva" e serve para rastreabilidade.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout warning">
+  <div class="callout-title">Margens do PDF</div>
+  Ao usar "Imprimir / Salvar como PDF", mantenha as margens em <strong>"Padrão"</strong> no diálogo do navegador, para o layout do relatório sair correto.
+</div>
+
+<figure class="screenshot">
+  <img src="imagens-manual/07_saidas.png" alt="Aba de saídas com os cartões de exportação XLSX, PDF e JSON" onerror="imgFallback(this,'imagens-manual/07_saidas.png')">
+  <figcaption>Aba 7 — Saídas: cartões de exportação (XLSX, PDF e JSON).</figcaption>
+</figure>
+
+<!-- 6. CORTE ESQUEMÁTICO -->
+<h2 id="s6">6. O Corte Esquemático</h2>
+<p>Acessível pela Aba 5 (botão <code>&#x1F4D0; Corte esquemático</code>), o corte é um <strong>perfil geológico interpretado</strong> entre os furos selecionados.</p>
+
+<div class="callout info">
+  <div class="callout-title">O corte é uma inferência</div>
+  O perfil entre furos é <strong>interpretação por similaridade de famílias de solo</strong>, não dado medido. O próprio app exibe um aviso nesse sentido. Revise sempre com julgamento técnico e geológico.
+</div>
+
+<h3 id="s6-1">6.1 Montar a seleção</h3>
+<ol class="steps">
+  <li>Clique em <code>&#x1F4D0; Corte esquemático</code> na Aba 5.</li>
+  <li>No mini-mapa ou na lista, selecione os furos e estacas que comporão o corte, <strong>na ordem</strong> desejada (cada item recebe um número de ordem). Mínimo: 1 estaca + 2 sondagens; máximo: 10 itens.</li>
+  <li>Clique em <code>Ver corte (tela cheia)</code>.</li>
+</ol>
+
+<figure class="screenshot">
+  <img src="imagens-manual/08_corte-selecao.png" alt="Modal do corte esquemático com a seleção sequencial de furos e estacas no mini-mapa" onerror="imgFallback(this,'imagens-manual/08_corte-selecao.png')">
+  <figcaption>Corte Esquemático: modal de seleção sequencial (furos e estacas numerados).</figcaption>
+</figure>
+
+<h3 id="s6-2">6.2 Camadas (toggles disponíveis)</h3>
+<ul>
+  <li><strong>Perfil interpretado</strong> — preenche as camadas entre furos, conectando blocos da mesma família de solo por trapézios; camadas que terminam lateralmente são representadas por cunhas que se estendem até a face do furo vizinho;</li>
+  <li><strong>Mostrar NSPTs</strong> — exibe os valores de golpe ao lado de cada furo;</li>
+  <li><strong>Ligar camadas / Ligar hachuras</strong> — modos alternativos de representar as conexões (linhas tracejadas ou hachuras diagonais);</li>
+  <li><strong>Preservar mergulho</strong> — desenha as conexões nas cotas reais (camadas inclinadas) em vez de horizontalizadas;</li>
+  <li><strong>Superfície do terreno / Nível d'água / Média dos topos</strong> — sobreposições de contexto;</li>
+  <li><strong>Trecho sem SPT</strong> — quando a cota de arrasamento de uma estaca está acima do topo investigado, esse trecho recebe uma <strong>hachura âmbar</strong> distinta, sinalizando zona não investigada.</li>
+</ul>
+<p>As <strong>famílias de solo</strong> usadas para conectar camadas são: Coesivo (argila), Granular (areia) e Intermediário (silte).</p>
+
+<figure class="screenshot">
+  <img src="imagens-manual/09_corte-tela-cheia.png" alt="Corte esquemático em tela cheia, com perfil interpretado, hachuras e cunhas" onerror="imgFallback(this,'imagens-manual/09_corte-tela-cheia.png')">
+  <figcaption>Corte Esquemático: visualização em tela cheia, com perfil interpretado e hachuras.</figcaption>
+</figure>
+
+<h3 id="s6-3">6.3 Exportar e aviso</h3>
+<p>O corte pode ser exportado em SVG pelo botão <code>Exportar SVG</code>.</p>
+<div class="callout warning">
+  <div class="callout-title">Reforço — o corte não substitui investigação</div>
+  Por ser inferência por similaridade de famílias, o corte não substitui sondagens nem a interpretação geológica do projetista. Use-o como apoio à comunicação e à análise.
+</div>
+
+<!-- 7. SALVAR / ABRIR -->
+<h2 id="s7">7. Salvar e abrir uma obra</h2>
+<div class="callout danger">
+  <div class="callout-title">&#x26A0; O GeoSPT não salva dados no navegador</div>
+  Se você fechar a aba sem exportar, <strong>perde o trabalho</strong>. Não há salvamento automático nem armazenamento local.
+</div>
+<ul>
+  <li><strong>Salvar:</strong> use <code>&#x1F4E4; Exportar &#x25BE;</code> no topo e escolha <code>&#x1F4BE; Baixar arquivo</code> (recomendado) ou <code>&#x1F441; Visualizar JSON</code> (para copiar com Ctrl+C). O arquivo <code>geospt_&lt;obra&gt;_&lt;data&gt;.json</code> contém todo o estado;</li>
+  <li><strong>Abrir:</strong> use <code>&#x1F4E5; Importar</code> e selecione um JSON exportado anteriormente. O app valida o arquivo (<code>_schema: geospt-obra</code>) e restaura todo o estado.</li>
+</ul>
+<p>Mantenha o JSON em local seguro — ele é a sua "obra salva".</p>
+
+<!-- 8. FAQ -->
+<h2 id="s8">8. Perguntas frequentes</h2>
+<h4>O app envia meus dados para algum servidor?</h4>
+<p>Não. Todo o processamento é feito no seu navegador. Os dados só saem da máquina se você exportar os arquivos.</p>
+<h4>Por que preciso de pelo menos 2 sondagens?</h4>
+<p>A compatibilização e o corte comparam furos entre si; com um único furo não há o que compatibilizar.</p>
+<h4>Aparece "nenhuma cota atende a carga prevista" numa estaca. O que é?</h4>
+<p>Com os parâmetros atuais, nenhuma profundidade de ponta atinge a carga prevista para aquela estaca. Reveja a carga, o tipo/diâmetro da estaca ou as configurações de cálculo.</p>
+<h4>O cálculo substitui o projeto de fundações?</h4>
+<p>Não. É uma estimativa de apoio; o dimensionamento final é responsabilidade do engenheiro habilitado (NBR 6122).</p>
+<h4>Por que não existe um alerta "A6"?</h4>
+<p>A numeração dos alertas pula o A6 por decisão de projeto. Os alertas válidos são A1–A5, A7, A8, A9 (com a variante A9_info) e A10.</p>
+<h4>Como abro este manual a partir do app?</h4>
+<p>Se a barra superior exibir o botão <code>&#x1F4D6; Manual</code>, ele abre este documento em uma aba separada do navegador. Caso não apareça, abra o arquivo HTML diretamente.</p>
+
+<!-- 9. GLOSSÁRIO -->
+<h2 id="s9">9. Glossário</h2>
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>Termo</th><th>Significado</th></tr></thead>
+  <tbody>
+    <tr><td><strong>NSPT</strong></td><td>Número de golpes do ensaio SPT por metro de profundidade.</td></tr>
+    <tr><td><strong>Cota absoluta</strong></td><td>Altura de um ponto em relação a um referencial (ex.: nível do mar). Base do alinhamento entre furos.</td></tr>
+    <tr><td><strong>Envoltória inferior</strong></td><td>Perfil que toma, em cada cota, o menor valor entre os furos — a hipótese mais conservadora.</td></tr>
+    <tr><td><strong>Família de solo</strong></td><td>Classificação simplificada: Coesivo (argila), Granular (areia), Intermediário (silte).</td></tr>
+    <tr><td><strong>Cota de arrasamento</strong></td><td>Cota em que a estaca é arrasada (topo aproveitável da estaca).</td></tr>
+    <tr><td><strong>R_p / R_l</strong></td><td>Resistência de ponta (R_p) e resistência por atrito lateral (R_l) da estaca.</td></tr>
+    <tr><td><strong>Q<sub>adm</sub> / P_adm</strong></td><td>Carga admissível da estaca.</td></tr>
+    <tr><td><strong>Domínio geotécnico</strong></td><td>Agrupamento de furos semelhantes, usado para filtrar cálculos por região do terreno.</td></tr>
+    <tr><td><strong>Décourt-Quaresma / Aoki-Velloso</strong></td><td>Métodos semiempíricos de estimativa de capacidade de carga a partir do SPT.</td></tr>
+  </tbody>
+</table>
+</div>
+
+</main>
+</div>
+
+<footer id="footer">
+  GeoSPT — Manual de Utilização · v2.0.7 · Documento de apoio; não substitui a responsabilidade técnica do projetista (NBR 6122).
+</footer>
+
+<script>
+// Placeholder de captura de tela (mostrado enquanto o PNG não existe na pasta imagens-manual/)
+function imgFallback(img, label) {
+  var w = 1280, h = 720;
+  var ns = 'http://www.w3.org/2000/svg';
+  var svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', 'Captura pendente: ' + label);
+  svg.innerHTML =
+    '<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="#eef2ff"/>' +
+    '<rect x="10" y="10" width="' + (w - 20) + '" height="' + (h - 20) + '" rx="14" fill="#f8faff" stroke="#1e40af" stroke-width="3" stroke-dasharray="16 12"/>' +
+    '<rect x="' + (w / 2 - 64) + '" y="' + (h / 2 - 92) + '" width="128" height="92" rx="10" fill="none" stroke="#1e40af" stroke-width="5"/>' +
+    '<rect x="' + (w / 2 - 22) + '" y="' + (h / 2 - 104) + '" width="44" height="18" rx="5" fill="#1e40af"/>' +
+    '<circle cx="' + (w / 2) + '" cy="' + (h / 2 - 46) + '" r="24" fill="none" stroke="#1e40af" stroke-width="5"/>' +
+    '<text x="50%" y="' + (h / 2 + 36) + '" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="32" font-weight="700" fill="#1e3a8a">Captura de tela pendente</text>' +
+    '<text x="50%" y="' + (h / 2 + 80) + '" text-anchor="middle" font-family="Courier New,monospace" font-size="26" fill="#475569">' + label + '</text>' +
+    '<text x="50%" y="' + (h / 2 + 122) + '" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="22" fill="#94a3b8">salve o arquivo PNG com este nome na pasta imagens-manual/</text>';
+  if (img && img.parentNode) img.parentNode.replaceChild(svg, img);
+}
+
+// Sidebar active link highlight on scroll
+(function() {
+  var links = document.querySelectorAll('#sidebar a');
+  var sections = Array.from(links).map(function(a) {
+    return document.querySelector(a.getAttribute('href'));
+  }).filter(Boolean);
+  function onScroll() {
+    var current = sections[0];
+    sections.forEach(function(s) { if (window.scrollY + 80 >= s.offsetTop) current = s; });
+    links.forEach(function(a) {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+
+// Sistema de busca
+(function() {
+  var input      = document.getElementById('search-input');
+  var clearBtn   = document.getElementById('search-clear');
+  var countEl    = document.getElementById('search-count');
+  var panel      = document.getElementById('search-panel');
+  var panelLabel = document.getElementById('search-panel-label');
+  var resultsEl  = document.getElementById('search-results');
+  var closeBtn   = document.getElementById('search-panel-close');
+  var main       = document.getElementById('main');
+  var currentMatches = [], currentIdx = -1, searchIndex = [], debounce;
+
+  function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function buildIndex() {
+    searchIndex = [];
+    var headings = Array.from(main.querySelectorAll('h2, h3, h4'));
+    var blocks = Array.from(main.querySelectorAll('p, li, td, th, pre, figcaption'));
+    blocks.forEach(function(el) {
+      if (el.closest('#search-panel')) return;
+      var txt = el.textContent.trim();
+      if (txt.length < 3) return;
+      var bestH = null, bestTop = -1;
+      headings.forEach(function(h) {
+        if (h.offsetTop <= el.offsetTop + 4 && h.offsetTop > bestTop) { bestH = h; bestTop = h.offsetTop; }
+      });
+      searchIndex.push({ el: el, text: txt,
+        heading: bestH ? bestH.textContent.trim() : '',
+        headingId: bestH ? (bestH.id || '') : '' });
+    });
+  }
+
+  function clearHighlights() {
+    main.querySelectorAll('mark.hl').forEach(function(m) {
+      var p = m.parentNode;
+      if (p) { p.replaceChild(document.createTextNode(m.textContent), m); p.normalize(); }
+    });
+    currentMatches = []; currentIdx = -1;
+  }
+
+  function applyHighlights(term) {
+    clearHighlights();
+    var re = new RegExp('(' + escRe(term) + ')', 'gi');
+    var walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, { acceptNode: function(node) {
+      var p = node.parentElement;
+      if (!p || p.tagName === 'SCRIPT' || p.tagName === 'STYLE' || p.tagName === 'MARK') return NodeFilter.FILTER_REJECT;
+      if (p.closest && p.closest('#search-panel')) return NodeFilter.FILTER_REJECT;
+      if (!re.test(node.textContent)) { re.lastIndex = 0; return NodeFilter.FILTER_SKIP; }
+      re.lastIndex = 0; return NodeFilter.FILTER_ACCEPT;
+    }});
+    var nodes = [], n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    nodes.forEach(function(node) {
+      var parent = node.parentNode, frag = document.createDocumentFragment();
+      node.textContent.split(re).forEach(function(part) {
+        if (re.test(part)) {
+          re.lastIndex = 0;
+          var mark = document.createElement('mark'); mark.className = 'hl'; mark.textContent = part;
+          frag.appendChild(mark); currentMatches.push(mark);
+        } else { re.lastIndex = 0; frag.appendChild(document.createTextNode(part)); }
+      });
+      parent.replaceChild(frag, node);
+    });
+  }
+
+  function navigateMatch(idx) {
+    if (!currentMatches.length) return;
+    if (currentIdx >= 0 && currentIdx < currentMatches.length) currentMatches[currentIdx].classList.remove('hl-current');
+    currentIdx = ((idx % currentMatches.length) + currentMatches.length) % currentMatches.length;
+    var m = currentMatches[currentIdx];
+    m.classList.add('hl-current');
+    m.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (currentMatches.length > 0) countEl.textContent = (currentIdx + 1) + ' / ' + currentMatches.length;
+  }
+
+  function makeSnippet(text, term, r) {
+    var idx = text.toLowerCase().indexOf(term.toLowerCase());
+    if (idx < 0) return escHtml(text.slice(0, r * 2));
+    var s = Math.max(0, idx - r), e = Math.min(text.length, idx + term.length + r);
+    var raw = (s > 0 ? '...' : '') + text.slice(s, e) + (e < text.length ? '...' : '');
+    return escHtml(raw).replace(new RegExp('(' + escRe(escHtml(term)) + ')', 'gi'), '<mark>$1</mark>');
+  }
+
+  function doSearch(term) {
+    clearHighlights(); resultsEl.innerHTML = ''; countEl.textContent = '';
+    if (term.length < 2) { panel.classList.remove('open'); return; }
+    var lc = term.toLowerCase(), groups = {}, order = [];
+    searchIndex.forEach(function(entry) {
+      if (entry.text.toLowerCase().indexOf(lc) < 0) return;
+      var key = entry.headingId || entry.heading || '__top__';
+      if (!groups[key]) { groups[key] = { heading: entry.heading, headingId: entry.headingId, snippets: [] }; order.push(key); }
+      if (groups[key].snippets.length < 2) groups[key].snippets.push(makeSnippet(entry.text, term, 65));
+    });
+    if (!order.length) {
+      resultsEl.innerHTML = '<div id="search-empty">Nenhum resultado para <strong>&ldquo;' + escHtml(term) + '&rdquo;</strong>.</div>';
+      panel.classList.add('open'); panelLabel.innerHTML = 'Nenhum resultado'; return;
+    }
+    order.forEach(function(key) {
+      var g = groups[key], div = document.createElement('div');
+      div.className = 'sr-item';
+      div.innerHTML = '<div class="sr-item-section">' + (g.heading ? escHtml(g.heading) : 'Geral') + '</div>' +
+        g.snippets.map(function(s) { return '<div class="sr-item-ctx">' + s + '</div>'; }).join('');
+      div.addEventListener('click', function() {
+        if (g.headingId) { var t = document.getElementById(g.headingId); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        applyHighlights(term); navigateMatch(0); panel.classList.remove('open');
+      });
+      resultsEl.appendChild(div);
+    });
+    var total = order.length;
+    panelLabel.innerHTML = '<strong>' + total + '</strong> ' + (total !== 1 ? 'seções' : 'seção') + ' encontrada' + (total !== 1 ? 's' : '');
+    countEl.textContent = total + ' resultado' + (total !== 1 ? 's' : '');
+    panel.classList.add('open');
+    applyHighlights(term);
+    if (currentMatches.length) navigateMatch(0);
+  }
+
+  function clearSearch() {
+    input.value = ''; clearBtn.style.display = 'none'; countEl.textContent = '';
+    panel.classList.remove('open'); resultsEl.innerHTML = ''; clearHighlights();
+  }
+
+  input.addEventListener('input', function() {
+    var val = input.value.trim();
+    clearBtn.style.display = val ? 'block' : 'none';
+    clearTimeout(debounce);
+    debounce = setTimeout(function() { doSearch(val); }, 220);
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); currentMatches.length > 0 ? navigateMatch(currentIdx + 1) : doSearch(input.value.trim()); }
+    if (e.key === 'Escape') clearSearch();
+  });
+  clearBtn.addEventListener('click', clearSearch);
+  closeBtn.addEventListener('click', function() { panel.classList.remove('open'); });
+  document.addEventListener('click', function(e) {
+    var wrap = document.getElementById('search-wrap');
+    if (!panel.contains(e.target) && !wrap.contains(e.target)) panel.classList.remove('open');
+  });
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault(); input.focus(); input.select();
+    }
+  });
+  window.addEventListener('load', buildIndex);
+  if (document.readyState === 'complete') buildIndex();
+})();
+</script>
+
+</body>
+</html>
