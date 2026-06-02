@@ -1,92 +1,286 @@
-# GeoSPT
+# GeoSPT — Manual de Utilização
 
-> Análise de sondagens SPT e cálculo de capacidade de carga de estacas pelos métodos de **Décourt-Quaresma** e **Aoki-Velloso**, conforme a **NBR 6122:2022**.
+> Aplicação web para **análise de sondagens SPT** e **cálculo de capacidade de carga de estacas** pelos métodos de **Décourt-Quaresma** e **Aoki-Velloso**, conforme a **NBR 6122:2022**.
 
-Aplicação web para apoio a projetos geotécnicos: compatibiliza múltiplos furos de sondagem, estima a capacidade de carga de estacas em diferentes modos de cálculo e gera um corte esquemático interpretado do subsolo.
+O GeoSPT organiza o fluxo de um projeto geotécnico em sete abas sequenciais — da identificação da obra até a exportação dos memoriais — compatibilizando múltiplos furos de sondagem, estimando a capacidade de carga das estacas em quatro modos de cálculo e gerando um corte esquemático interpretado do subsolo.
 
-> ⚠️ **Aviso técnico.** O GeoSPT realiza estimativas semiempíricas. Os resultados são uma ferramenta de apoio e **não substituem a análise e a responsabilidade técnica do projetista**. Todo dimensionamento deve ser revisado por engenheiro habilitado.
+> ⚠️ **Aviso técnico.** O GeoSPT realiza estimativas semiempíricas de capacidade de carga. Os resultados são uma **ferramenta de apoio** e **não substituem a análise nem a responsabilidade técnica do projetista**. Todo dimensionamento deve ser conferido por engenheiro habilitado.
 
 ---
 
-## Funcionalidades
+## Índice
 
-- **Sondagens** — cadastro de furos SPT (NSPT por metro, cota de topo, nível d'água, critério de paralisação) e tratamento de trechos impenetráveis.
-- **Compatibilização** — alinhamento de múltiplos furos por cota absoluta, com perfil consolidado.
-- **Capacidade de carga** — Décourt-Quaresma e Aoki-Velloso em quatro modos: envoltória, perfil médio, por furo individual e por interpolação entre furos.
-- **Corte esquemático** — perfil geológico interpretado entre furos (camadas casadas por família de solo, acunhamento, hachuras), com sobreposição de estacas, terreno, nível d'água e trechos sem investigação SPT.
-- **Exportações** — memoriais e resultados em XLSX, PDF e JSON de auditoria.
+- [Visão geral](#visão-geral)
+- [Instalação e execução](#instalação-e-execução)
+- [Conceitos básicos](#conceitos-básicos)
+- [Manual das abas](#manual-das-abas)
+  - [Aba 1 — Obra](#aba-1--obra)
+  - [Aba 2 — Sondagens](#aba-2--sondagens)
+  - [Aba 3 — Compatibilização](#aba-3--compatibilização)
+  - [Aba 4 — Análise](#aba-4--análise)
+  - [Aba 5 — Estacas](#aba-5--estacas)
+  - [Aba 6 — Capacidade](#aba-6--capacidade)
+  - [Aba 7 — Saídas](#aba-7--saídas)
+- [O Corte Esquemático](#o-corte-esquemático)
+- [Salvar e abrir uma obra](#salvar-e-abrir-uma-obra)
+- [Perguntas frequentes](#perguntas-frequentes)
+- [Stack e estrutura do projeto](#stack-e-estrutura-do-projeto)
+- [Testes](#testes)
+- [Licença](#licença)
 
-## Stack
+---
 
-- **React** 18.3 + **Vite** 7
-- **Tailwind CSS** 3.4
-- **SheetJS (xlsx)** para exportação de planilhas
-- JavaScript (sem TypeScript)
+## Visão geral
 
-## Como rodar
+O fluxo de trabalho segue a ordem das abas, mas você pode navegar livremente entre elas:
 
-Pré-requisito: **Node.js 18+** (recomendado 20+).
+| # | Aba | O que faz |
+|---|-----|-----------|
+| 1 | **Obra** | Identificação do projeto (nome, local, responsável técnico) que alimenta os memoriais. |
+| 2 | **Sondagens** | Cadastro dos furos SPT (NSPT por metro, cota de topo, nível d'água). |
+| 3 | **Compatibilização** | Alinhamento dos furos por cota absoluta, gerando um perfil consolidado. |
+| 4 | **Análise** | Alertas críticos automáticos e sugestão de agrupamento em domínios geotécnicos. |
+| 5 | **Estacas** | Cadastro das estacas e configurações globais de cálculo. |
+| 6 | **Capacidade** | Cálculo da capacidade de carga em 4 modos + comparativo. |
+| 7 | **Saídas** | Exportação dos resultados em XLSX, PDF e JSON. |
+
+O **Corte Esquemático** (perfil geológico interpretado) é acessível a partir da Aba 5.
+
+---
+
+## Instalação e execução
+
+**Pré-requisito:** [Node.js](https://nodejs.org) versão 18 ou superior (recomendado 20+).
 
 ```bash
-# 1. Instalar dependências
+# 1. Instalar as dependências (cria a pasta node_modules)
 npm install
 
-# 2. Rodar em modo desenvolvimento (abre em http://localhost:5173)
+# 2. Rodar em modo desenvolvimento — abre em http://localhost:5173
 npm run dev
 
-# 3. Gerar build de produção (saída em dist/)
+# 3. Gerar a versão de produção (saída na pasta dist/)
 npm run build
 
-# 4. Pré-visualizar o build de produção
+# 4. Pré-visualizar a versão de produção localmente
 npm run preview
 ```
 
-## Testes
+> 💡 **Dica.** Evite espaços no caminho da pasta do projeto (ex.: use `geospt-vite` em vez de `geospt vite`). Espaços podem causar erros de resolução de módulos no Windows.
 
-A engine de cálculo é validada por uma bateria de testes determinísticos em Node:
+---
 
-```bash
-# Regressão canônica (caso Balsas → Q_adm = 32,84 tf)
-node test-esm.mjs
+## Conceitos básicos
 
-# Casamento de camadas do corte esquemático
-node test-casamento.mjs
+Antes de usar, vale entender três termos que aparecem em todo o app:
 
-# Geometria do corte
-node test-geometria-corte.mjs
-```
+- **NSPT** — número de golpes do ensaio SPT por metro de profundidade. É o dado bruto de cada sondagem.
+- **Cota absoluta** — a altura de cada ponto em relação a um referencial (ex.: nível do mar). Como cada furo tem uma cota de topo diferente, a compatibilização alinha tudo pela cota, não pela profundidade.
+- **Família de solo** — classificação simplificada em três grupos: **Coesivo** (argilas), **Granular** (areias) e **Intermediário** (siltes). O corte esquemático usa a família para decidir quais camadas se conectam entre furos vizinhos.
 
-A engine (`src/engine/geospt-engine.js`) está **congelada e validada com 216 testes** (190 sintéticos + 26 do caso de referência Balsas). O caso Balsas serve de regressão canônica: qualquer alteração que mude o resultado de **32,84 tf** indica quebra.
+---
 
-## Estrutura do projeto
+## Manual das abas
+
+### Aba 1 — Obra
+
+Formulário de cabeçalho do projeto. Os campos preenchidos aqui aparecem nos memoriais exportados (Aba 7).
+
+**Campos:**
+- **Nome da obra** — identificação principal (aparece no topo do app).
+- **Localização** — Município/UF.
+- **Data de cadastro**.
+- **Sistema de coordenadas** — referencial usado nas coordenadas dos furos/estacas.
+- **Responsável técnico** — nome e CREA.
+- **Observações** — notas livres sobre a obra, sondagens ou restrições do terreno.
+
+### Aba 2 — Sondagens
+
+Cadastro dos furos de sondagem SPT.
+
+**Como usar:**
+1. Clique em **"+ Adicionar"** na barra lateral para criar uma sondagem.
+2. Selecione uma sondagem na lista para editá-la no painel principal.
+3. Preencha, para cada furo: nome, cota de topo, profundidade final, critério de paralisação (ex.: impenetrável), nível d'água e as leituras de NSPT metro a metro.
+4. Para remover, use o botão de exclusão (com confirmação).
+
+**Trecho impenetrável / NSPT alto:** quando o NSPT ultrapassa o limite do ensaio, o app preserva o valor real medido e marca o trecho como impenetrável — informação usada nos cálculos e no corte.
+
+> É necessário **pelo menos 2 sondagens** para compatibilizar e gerar o corte.
+
+### Aba 3 — Compatibilização
+
+Alinha os furos cadastrados por cota absoluta, produzindo um perfil consolidado do subsolo.
+
+**Recursos:**
+- **Janela de compatibilização** — um controle deslizante define a tolerância de agrupamento das cotas. A alteração fica em rascunho até você confirmar.
+- **Seletor de domínio** — filtra os furos por domínio geotécnico (ver Aba 4).
+- **Botão "Recalcular"** — aplica os ajustes e refaz a compatibilização.
+- **Layout em duas colunas** (em telas largas): tabela densa de valores à esquerda e perfil em SVG à direita.
+
+### Aba 4 — Análise
+
+Análise crítica automática do conjunto de sondagens.
+
+**O que mostra:**
+1. **Contagem por severidade** — número de alertas críticos, moderados e informativos.
+2. **Lista de alertas (A1–A10)** — cada alerta é um card que aponta uma possível inconsistência ou ponto de atenção (ex.: divergência entre furos, cota de arrasamento acima do topo das sondagens).
+3. **Sugestão de agrupamento em domínios** — uma análise (k-means simplificado) que propõe agrupar furos semelhantes em domínios geotécnicos.
+
+> A sugestão de domínio **não roda sozinha** — clique em **"Calcular"**. Ao aplicar, o domínio sugerido é gravado em cada sondagem, permitindo filtrar cálculos por região do terreno.
+
+### Aba 5 — Estacas
+
+Cadastro das estacas e das configurações globais de cálculo.
+
+**Layout em duas colunas (telas largas):**
+- **Esquerda:** tabela de estacas + painel de configurações globais.
+- **Direita:** mini-mapa com a posição de furos e estacas.
+
+**Operações com estacas:**
+- **Adicionar** — gera o próximo nome livre (E-01, E-02...) e abre o formulário.
+- **Editar** — ícone de lápis (✎) abre o formulário com os dados da estaca.
+- **Remover** — ícone (✕), com confirmação.
+
+Para cada estaca define-se: tipo (hélice contínua, pré-moldada, raiz, etc.), diâmetro, cota de arrasamento, carga prevista e coordenadas.
+
+**Configurações globais de cálculo:**
+- **Desprezar atrito do último metro (bulbo)** — prática usual; ativado por padrão.
+- **Aplicar fator redutor de ponta** (Tabela 1.9).
+- **Limitar R_p ≤ R_l** (regra adicional de Décourt).
+- **Tratamento de ponta** (exclusivo, três opções):
+  - `R_p = calculado` (padrão);
+  - `R_p = 0 e P_adm = R_l/2` (NBR 6122 — sem contato garantido);
+  - `R_p = min(R_p, R_l)` (NBR 6122 — contato com ressalva).
+- **Editor de coeficientes** — permite ajustar os coeficientes dos métodos, com presets.
+
+A partir desta aba abre-se também o **Corte Esquemático** (botão "📐 Corte esquemático").
+
+### Aba 6 — Capacidade
+
+Cálculo da capacidade de carga da estaca selecionada, com Décourt-Quaresma e Aoki-Velloso.
+
+**Como usar:**
+1. Selecione a estaca ativa.
+2. Escolha o **modo de cálculo** (abas internas).
+
+**Os quatro modos:**
+
+| Modo | Descrição |
+|------|-----------|
+| **Envoltória** | Usa a envoltória inferior (mais conservadora) dos furos. |
+| **Perfil médio** | Usa um perfil médio das sondagens, com submodos (ex.: conservador). |
+| **Por furo** | Calcula a capacidade furo a furo, individualmente. |
+| **Interpolação** | Interpola entre furos conforme a posição da estaca, com pesos por cota. |
+
+Há ainda uma aba **Comparativo**, que coloca os modos lado a lado para análise.
+
+Cada modo apresenta o resumo (Q_adm, carga prevista, margem com cor por sinal), o detalhamento por camada e o memorial de cálculo. Quando há divergência entre Décourt-Quaresma e Aoki-Velloso, ela é sinalizada.
+
+### Aba 7 — Saídas
+
+Exportação dos resultados.
+
+| Formato | Conteúdo |
+|---------|----------|
+| **XLSX** | Planilha com memoriais (uma aba por modo de cálculo + uma comparativa) e colunas de auditoria. Abre no Excel/LibreOffice. |
+| **PDF** | Documento formatado, gerado pela função de impressão do navegador (botão "Imprimir / Salvar como PDF"). Versões compacta e completa. |
+| **JSON de auditoria** | Arquivo com todos os dados de entrada e resultados, com hashes de integridade. Serve para reabrir a obra e para rastreabilidade. |
+
+---
+
+## O Corte Esquemático
+
+Acessível pela Aba 5, o corte é um **perfil geológico interpretado** entre os furos selecionados.
+
+**Como montar:**
+1. Clique em **"📐 Corte esquemático"**.
+2. No mini-mapa ou na lista, selecione os furos e estacas que comporão o corte, **na ordem** desejada (cada item recebe um número de ordem). Mínimo: 1 estaca + 2 sondagens; máximo: 10 itens.
+3. Clique em **"Ver corte (tela cheia)"**.
+
+**Camadas (toggles disponíveis):**
+- **Perfil interpretado** — preenche as camadas entre furos, conectando blocos da mesma família de solo por trapézios; camadas que terminam lateralmente são representadas por cunhas que se estendem até a face do furo vizinho.
+- **Mostrar NSPTs** — exibe os valores de golpe ao lado de cada furo.
+- **Ligar camadas / Ligar hachuras** — modos alternativos de representar as conexões (linhas tracejadas ou hachuras diagonais).
+- **Preservar mergulho real** — desenha as conexões nas cotas reais (camadas inclinadas) em vez de horizontalizadas.
+- **Superfície do terreno, nível d'água, média dos topos** — sobreposições de contexto.
+- **Trecho sem SPT** — quando a cota de arrasamento de uma estaca está acima do topo investigado, esse trecho é marcado com uma hachura âmbar distinta (zona não investigada).
+
+> ⚠️ O perfil entre furos é **inferência por similaridade de famílias de solo**, não dado medido. Revise sempre com julgamento técnico e geológico.
+
+O corte pode ser **exportado em SVG** (botão "Exportar SVG").
+
+---
+
+## Salvar e abrir uma obra
+
+> ⚠️ **O GeoSPT não salva dados no navegador.** Se você fechar a aba sem exportar, **perde o trabalho**.
+
+- **Salvar:** use **Exportar → JSON** (botão no topo). O arquivo `geospt_<obra>_<data>.json` contém tudo.
+- **Abrir:** use **Importar** e selecione um JSON exportado anteriormente. O app valida o arquivo e restaura todo o estado.
+
+Mantenha o JSON em local seguro; ele é a sua "obra salva".
+
+---
+
+## Perguntas frequentes
+
+**O app envia meus dados para algum servidor?**
+Não. Todo o processamento é feito no seu navegador. Os dados só saem da máquina se você exportar os arquivos.
+
+**Por que preciso de pelo menos 2 sondagens?**
+A compatibilização e o corte comparam furos entre si; com um único furo não há o que compatibilizar.
+
+**Aparece "nenhuma cota atende a carga prevista" numa estaca. O que é?**
+Significa que, com os parâmetros atuais, nenhuma profundidade de ponta atinge a carga prevista para aquela estaca. Reveja carga, tipo/diâmetro da estaca ou as configurações de cálculo.
+
+**O cálculo substitui o projeto de fundações?**
+Não. É uma estimativa de apoio; o dimensionamento final é responsabilidade do engenheiro.
+
+---
+
+## Stack e estrutura do projeto
+
+**Tecnologias:** React 18 · Vite 7 · Tailwind CSS 3 · SheetJS (xlsx). JavaScript (sem TypeScript).
 
 ```
 src/
-├── abas/                 # As 7 abas da aplicação
-│   ├── AbaSondagens/      # Cadastro de furos SPT
+├── abas/                     # As 7 abas
+│   ├── AbaIdentificacao.jsx
+│   ├── AbaSondagens/
 │   ├── AbaCompatibilizacao/
-│   ├── AbaAnalise/        # Alertas e domínios geotécnicos
-│   ├── AbaEstacas/        # Cadastro de estacas + coeficientes
-│   ├── AbaCapacidade/     # Cálculo de capacidade (4 modos)
-│   ├── AbaCorteEsquematico/  # Corte geológico interpretado
-│   └── AbaSaidas/         # Exportações (XLSX, PDF, JSON)
-├── components/           # Componentes de UI e visualizações
-├── domain/               # Regras de domínio (solos, estacas)
-├── engine/               # Núcleo de cálculo (CONGELADO) + dataset Balsas
-├── layout/               # Cabeçalho, abas, navegação
-└── state/                # Estado global da obra (Context)
+│   ├── AbaAnalise/
+│   ├── AbaEstacas/
+│   ├── AbaCapacidade/         # Os 4 modos de cálculo
+│   ├── AbaCorteEsquematico/   # Corte geológico interpretado
+│   └── AbaSaidas/             # XLSX, PDF, JSON
+├── components/               # UI, inputs, visualizações
+├── domain/                   # Regras de domínio (solos, estacas)
+├── engine/                   # Núcleo de cálculo (CONGELADO) + dataset Balsas
+├── layout/                   # Cabeçalho, abas, navegação
+└── state/                    # Estado global da obra (Context)
 ```
 
-## Documentação adicional
+A engine de cálculo (`src/engine/geospt-engine.js`) é **congelada e validada**; alterações na interface não a modificam.
 
-- **[HISTORICO_DESENVOLVIMENTO.md](HISTORICO_DESENVOLVIMENTO.md)** — registro cronológico das decisões técnicas (checkpoints de desenvolvimento).
-- **[NOTAS_TECNICAS.md](NOTAS_TECNICAS.md)** — notas técnicas detalhadas por checkpoint.
-- **[CHECKLIST_VISUAL.md](CHECKLIST_VISUAL.md)** — checklist de verificação visual.
+---
 
-## Persistência
+## Testes
 
-A aplicação **não salva dados no navegador**. Exporte a obra em **JSON** antes de fechar a aba para não perder o trabalho; reimporte o JSON para continuar.
+A engine é validada por testes determinísticos em Node:
+
+```bash
+node test-esm.mjs              # Regressão canônica (caso Balsas → 32,84 tf)
+node test-casamento.mjs        # Casamento de camadas do corte
+node test-geometria-corte.mjs  # Geometria do corte
+```
+
+O **caso Balsas** é a regressão canônica: qualquer mudança que altere o resultado de **32,84 tf** indica quebra.
+
+Para o histórico detalhado de desenvolvimento, veja **[HISTORICO_DESENVOLVIMENTO.md](HISTORICO_DESENVOLVIMENTO.md)** e **[NOTAS_TECNICAS.md](NOTAS_TECNICAS.md)**.
+
+---
 
 ## Licença
 
-Projeto de uso interno. Defina aqui a licença aplicável (ex.: uso restrito institucional, MIT, etc.).
+Defina aqui a licença aplicável ao projeto (ex.: uso restrito institucional, MIT, etc.).
