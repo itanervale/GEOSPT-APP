@@ -246,15 +246,27 @@ export default function ConteudoComparativoModos({ sondagens, estaca, params, ob
   const modosOk = Object.entries(resultados).filter(
     ([_, r]) => !r.erro && r.pior != null
   );
-  // Mais conservador = menor "pior caso" min(Q_DQ, Q_AV) na cota conservadora
+  // Mais conservador = MAIOR PROFUNDIDADE da ponta = MENOR cota de ponta
+  // (estaca mais comprida = lado conservador). Critério físico: como todas as
+  // estacas arrancam da mesma cota de arrasamento, a ponta de menor cota
+  // absoluta é a mais funda e exige a maior estaca. Desempate (cotas iguais):
+  // menor "pior caso" min(Q_DQ, Q_AV), o de menor capacidade.
   let modoMaisConservador = null,
-    qMinConservador = Infinity;
+    cotaMaisFunda = Infinity,
+    qDesempate = Infinity;
   modosOk.forEach(([id, r]) => {
-    if (r.pior < qMinConservador) {
-      qMinConservador = r.pior;
+    if (r.cota == null) return;
+    const maisFundo = r.cota < cotaMaisFunda - 1e-9;
+    const empate = Math.abs(r.cota - cotaMaisFunda) <= 1e-9;
+    if (maisFundo || (empate && r.pior != null && r.pior < qDesempate)) {
+      cotaMaisFunda = r.cota;
+      qDesempate = r.pior != null ? r.pior : Infinity;
       modoMaisConservador = id;
     }
   });
+  // Q_adm do modo escolhido (para exibição), e cota correspondente
+  const rConservador = modoMaisConservador ? resultados[modoMaisConservador] : null;
+  const qMinConservador = rConservador?.pior ?? null;
 
   // Dispersão calculada sobre o pior caso de cada modo
   const piores = modosOk.map(([_, r]) => r.pior).filter((q) => q != null);
@@ -286,11 +298,18 @@ export default function ConteudoComparativoModos({ sondagens, estaca, params, ob
             <span className="font-medium">
               {labelModo[modoMaisConservador]}
             </span>{' '}
-            (Q_adm ={' '}
+            (ponta mais profunda — cota{' '}
             <strong className="font-mono">
-              {qMinConservador.toFixed(2)} tf
-            </strong>{' '}
-            — pior caso entre DQ e AV, Cenário B)
+              {cotaMaisFunda.toFixed(2)} m
+            </strong>
+            , maior comprimento de estaca
+            {qMinConservador != null && (
+              <>
+                ; Q_adm{' '}
+                <span className="font-mono">{qMinConservador.toFixed(2)} tf</span>
+              </>
+            )}
+            )
           </div>
           <div className="text-xs text-purple-700 mt-1">
             Dispersão entre modos: <strong>{spreadPct.toFixed(0)}%</strong>
