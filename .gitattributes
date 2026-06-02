@@ -1,2 +1,22 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Normaliza quebras de linha: o Git armazena LF no repositório e converte para
+# o padrão da máquina ao fazer checkout. Elimina o aviso "LF to CRLF" no Windows.
+* text=auto eol=lf
+
+# Arquivos de código e texto sempre LF
+*.js   text eol=lf
+*.jsx  text eol=lf
+*.mjs  text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.md   text eol=lf
+
+# Binários: nunca alterar
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.svg  text eol=lf
+*.pdf  binary
+*.xlsx binary
+*.zip  binary

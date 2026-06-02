@@ -1,0 +1,24 @@
+{
+  "name": "geospt",
+  "private": true,
+  "version": "2.0.7",
+  "type": "module",
+  "description": "GeoSPT — Análise SPT e capacidade de carga de estacas (Décourt-Quaresma + Aoki-Velloso)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.2.0",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^3.4.19",
+    "vite": "^7.3.3"
+  }
+}
