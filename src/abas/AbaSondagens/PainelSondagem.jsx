@@ -447,14 +447,14 @@ export default function PainelSondagem({ nome, sondagem, onRemover, onDuplicar }
               <th className="px-1.5 py-2 w-16">Prof. (m)</th>
               <th className="px-1.5 py-2 w-16">Cota (m)</th>
               <th className="px-1.5 py-2 w-16">NSPT</th>
-              <th className="px-1.5 py-2 w-44">
+              <th className="px-1.5 py-2 w-36">
                 Solo{' '}
                 {modoSolo === 'codigo' && (
                   <span className="text-slate-500 normal-case">(código)</span>
                 )}
               </th>
               <th className="px-1.5 py-2 w-20">Família</th>
-              <th className="px-1.5 py-2 w-10"></th>
+              <th className="px-1.5 py-2 w-28"></th>
             </tr>
           </thead>
           <tbody>
