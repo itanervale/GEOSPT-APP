@@ -144,6 +144,22 @@ export function ObraProvider({ children }) {
     });
   };
 
+  // Move um furo na ORDEM da lista (troca de posição com o vizinho). dir: -1
+  // sobe, +1 desce. sondagens é um objeto; a ordem é a das chaves, então
+  // reconstruímos o objeto com as chaves na nova ordem.
+  const moverSondagem = (nome, dir) => {
+    setEstado((s) => {
+      const chaves = Object.keys(s.obra.sondagens);
+      const idx = chaves.indexOf(nome);
+      const alvo = idx + dir;
+      if (idx < 0 || alvo < 0 || alvo >= chaves.length) return s;
+      [chaves[idx], chaves[alvo]] = [chaves[alvo], chaves[idx]];
+      const novas = {};
+      for (const k of chaves) novas[k] = s.obra.sondagens[k];
+      return { ...s, obra: { ...s.obra, sondagens: novas } };
+    });
+  };
+
   // ------- Corte esquemático (CP-13d) -------
   /** Persiste a seleção + toggles do corte no estado da obra (e no JSON). */
   const setCorteEsquematico = (corte) => {
@@ -378,6 +394,7 @@ export function ObraProvider({ children }) {
         atualizarSondagem,
         renomearSondagem,
         duplicarSondagem,
+        moverSondagem,
         selecionarElemento,
         setDominios,
         setCorteEsquematico,

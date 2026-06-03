@@ -98,6 +98,40 @@ export default function PainelSondagem({ nome, sondagem, onRemover, onDuplicar }
     }));
   };
 
+  // Move os DADOS de uma leitura para cima/baixo, mantendo a coluna de
+  // profundidade FIXA (a profundidade é a régua da sondagem; só os valores
+  // — NSPT, solo, família, impenetrável — trocam de posição). dir: -1 sobe, +1 desce.
+  const moverLeitura = (idx, dir) => {
+    const alvo = idx + dir;
+    atualizarSondagem(nome, (s) => {
+      const arr = [...s.leituras];
+      if (alvo < 0 || alvo >= arr.length) return s;
+      const profA = arr[idx].profundidade_m;
+      const profB = arr[alvo].profundidade_m;
+      // troca os objetos e devolve a profundidade fixa a cada posição
+      const tmp = arr[idx];
+      arr[idx] = { ...arr[alvo], profundidade_m: profA };
+      arr[alvo] = { ...tmp, profundidade_m: profB };
+      return { ...s, leituras: arr };
+    });
+  };
+
+  // Duplica uma leitura: insere uma cópia logo abaixo e renumera as
+  // profundidades em sequência (1,2,3,…) para manter a régua consistente.
+  const duplicarLeitura = (idx) => {
+    atualizarSondagem(nome, (s) => {
+      const arr = [...s.leituras];
+      const copia = { ...arr[idx] };
+      arr.splice(idx + 1, 0, copia);
+      // renumera profundidades a partir da 1ª (mantém a régua sequencial)
+      const base = arr.length > 0 ? arr[0].profundidade_m : 1;
+      arr.forEach((l, i) => {
+        l.profundidade_m = base + i;
+      });
+      return { ...s, leituras: arr };
+    });
+  };
+
   // Validação de NSPT digitado: aceita só inteiros 1-50; >50 dispara modal
   const handleNsptChange = (idx, valorStr) => {
     if (valorStr === '' || valorStr === null) {
@@ -547,14 +581,39 @@ export default function PainelSondagem({ nome, sondagem, onRemover, onDuplicar }
                       ? 'Intermed.'
                       : familia || <span className="text-slate-400">—</span>}
                   </td>
-                  <td className="px-1.5 py-1 text-center">
-                    <button
-                      onClick={() => removerLeitura(idx)}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                      title="Remover leitura"
-                    >
-                      ✕
-                    </button>
+                  <td className="px-1.5 py-1 text-center whitespace-nowrap">
+                    <div className="inline-flex items-center gap-0.5">
+                      <button
+                        onClick={() => moverLeitura(idx, -1)}
+                        disabled={idx === 0}
+                        className="text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-default text-sm px-0.5"
+                        title="Mover dados para cima"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        onClick={() => moverLeitura(idx, 1)}
+                        disabled={idx === leituras.length - 1}
+                        className="text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:cursor-default text-sm px-0.5"
+                        title="Mover dados para baixo"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        onClick={() => duplicarLeitura(idx)}
+                        className="text-slate-400 hover:text-blue-600 text-sm px-0.5"
+                        title="Duplicar leitura"
+                      >
+                        ⧉
+                      </button>
+                      <button
+                        onClick={() => removerLeitura(idx)}
+                        className="text-red-500 hover:text-red-700 text-sm px-0.5"
+                        title="Remover leitura"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

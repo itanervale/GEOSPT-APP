@@ -185,6 +185,7 @@
   <a href="#s5"    class="l1">5. Manual das abas</a>
   <a href="#s5-1"  class="l2">5.1 Aba 1 — Obra</a>
   <a href="#s5-2"  class="l2">5.2 Aba 2 — Sondagens</a>
+  <a href="#s5-2-1" class="l3">5.2.1 Sondagem via PDF (IA)</a>
   <a href="#s5-3"  class="l2">5.3 Aba 3 — Compatibilização</a>
   <a href="#s5-4"  class="l2">5.4 Aba 4 — Análise</a>
   <a href="#s5-5"  class="l2">5.5 Aba 5 — Estacas</a>
@@ -355,6 +356,48 @@ npm run preview</code></pre>
 <figure class="screenshot">
   <img src="imagens-manual/02_sondagem-nspt.png" alt="Painel de uma sondagem com as leituras de NSPT metro a metro" onerror="imgFallback(this,'imagens-manual/02_sondagem-nspt.png')">
   <figcaption>Aba 2 — Sondagens: painel de edição de um furo com as leituras de NSPT.</figcaption>
+</figure>
+
+<h3 id="s5-2-1">5.2.1 Adicionar sondagem a partir de um PDF (com IA)</h3>
+<p>Na <strong>tela inicial da Aba 2</strong> (quando ainda não há nenhuma sondagem cadastrada), além do botão <code>+ Adicionar primeira sondagem</code>, existe um segundo botão: <code>+ Adicionar sondagem a partir de um PDF com IA</code>. Ele ajuda a transformar um laudo em PDF em sondagens importáveis — de forma <strong>assistida</strong>, com conferência humana obrigatória.</p>
+
+<div class="callout info">
+  <div class="callout-title">O app não lê o PDF sozinho</div>
+  Esse botão <strong>apenas baixa um protocolo</strong> de extração (o arquivo <code>FORMATO_EXTRACAO_NSPT.md</code>). Ele <strong>não</strong> lê o PDF automaticamente nem embute IA no app, e <strong>nenhum dado é enviado a servidores</strong>: a extração é feita por uma IA externa (ex.: Claude), à sua escolha, e o GeoSPT permanece 100% local.
+</div>
+
+<p>Fluxo de uso:</p>
+<ol class="steps">
+  <li>Na tela inicial da Aba 2, clique em <code>+ Adicionar sondagem a partir de um PDF com IA</code>. O app baixa o arquivo <code>FORMATO_EXTRACAO_NSPT.md</code>.</li>
+  <li>Leve esse <code>.md</code> <strong>junto com</strong> o PDF do laudo a uma IA e peça: <em>"Extraia as sondagens no formato padrão GeoSPT (FORMATO_EXTRACAO_NSPT)."</em></li>
+  <li>A IA devolve dois blocos: <strong>(a)</strong> um relatório de conferência (tabela por furo, com os valores de baixa confiança marcados) e <strong>(b)</strong> um JSON no schema do GeoSPT.</li>
+  <li>Confira o relatório contra o PDF — sobretudo os <strong>dígitos de NSPT</strong>, as <strong>cotas de topo</strong> e os <strong>trechos impenetráveis</strong>.</li>
+  <li>Use o botão <code>&#x1F4E5; Importar</code> (no topo) para carregar o JSON no app.</li>
+  <li>Revise a Aba 2 (sondagens) e a <a href="#s5-4">Aba 4</a> — os alertas A2/A8 ajudam a flagrar inversões bruscas de NSPT, que muitas vezes são erro de digitação.</li>
+</ol>
+
+<div class="callout danger">
+  <div class="callout-title">&#x26A0; A conferência dos NSPT é obrigatória</div>
+  Os NSPT são os dados de entrada que governam todo o cálculo de capacidade. <strong>Um único dígito errado se propaga silenciosamente</strong> para os resultados, sem gerar erro visível. A conferência humana é parte do processo, não opcional — e a responsabilidade técnica pelos valores é do projetista.
+</div>
+
+<h4>O que vai no JSON (resumo)</h4>
+<p>O protocolo gera um arquivo no schema <code>geospt-obra</code>, com:</p>
+<ul>
+  <li><strong>Uma leitura por metro inteiro</strong> de cada furo (profundidade, NSPT, solo e família);</li>
+  <li><strong>Regra do impenetrável / NSPT &gt; 50:</strong> o arquivo guarda o <strong>valor real medido</strong> (para auditoria) e usa <strong>50</strong> no cálculo, marcando o trecho como impenetrável — coerente com o que a Aba 2 já faz na digitação manual;</li>
+  <li><strong>Solo canônico:</strong> cada camada usa um dos <strong>15 nomes de solo</strong> padronizados, e a <strong>família</strong> é derivada da 1ª palavra (Areia → Granular, Silte → Intermediário, Argila → Coesivo).</li>
+</ul>
+<p>O detalhe completo — schema raiz, campos de cada furo, tratamento de casos difíceis (PDF escaneado, cota ausente) e a tabela dos 15 solos canônicos — está no próprio <code>FORMATO_EXTRACAO_NSPT.md</code>. Abra-o para conferir antes de importar.</p>
+
+<div class="callout tip">
+  <div class="callout-title">Laudo escaneado ou de baixa qualidade</div>
+  Dígitos ambíguos (8↔6, 1↔7, 0↔9) são comuns em PDFs escaneados. Confira primeiro os valores que a IA marcar como <strong>"baixa confiança"</strong> no relatório — são os pontos de maior risco.
+</div>
+
+<figure class="screenshot">
+  <img src="imagens-manual/10_aba2-botao-pdf-ia.png" alt="Tela inicial da Aba 2 com os dois botões: adicionar primeira sondagem e adicionar a partir de um PDF com IA" onerror="imgFallback(this,'imagens-manual/10_aba2-botao-pdf-ia.png')">
+  <figcaption>Aba 2 (tela inicial): o botão de extração a partir de um PDF, ao lado de "+ Adicionar primeira sondagem".</figcaption>
 </figure>
 
 <!-- 5.3 COMPATIBILIZAÇÃO -->
@@ -582,6 +625,8 @@ npm run preview</code></pre>
 <p>Com os parâmetros atuais, nenhuma profundidade de ponta atinge a carga prevista para aquela estaca. Reveja a carga, o tipo/diâmetro da estaca ou as configurações de cálculo.</p>
 <h4>O cálculo substitui o projeto de fundações?</h4>
 <p>Não. É uma estimativa de apoio; o dimensionamento final é responsabilidade do engenheiro habilitado (NBR 6122).</p>
+<h4>O GeoSPT lê o PDF do laudo automaticamente?</h4>
+<p>Não. Ele fornece um protocolo padrão (<code>FORMATO_EXTRACAO_NSPT.md</code>, baixado pelo botão na tela inicial da Aba 2) para você extrair as sondagens com uma IA externa e <strong>conferir os valores antes de importar</strong>. O app não lê o PDF nem envia dados a servidores. Veja a <a href="#s5-2-1">seção 5.2.1</a>.</p>
 <h4>Por que não existe um alerta "A6"?</h4>
 <p>A numeração dos alertas pula o A6 por decisão de projeto. Os alertas válidos são A1–A5, A7, A8, A9 (com a variante A9_info) e A10.</p>
 <h4>Como abro este manual a partir do app?</h4>

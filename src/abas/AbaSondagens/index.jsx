@@ -26,6 +26,7 @@ export default function AbaSondagens() {
     adicionarSondagem,
     removerSondagem,
     duplicarSondagem,
+    moverSondagem,
   } = useObra();
 
   const sondagens = estado.obra.sondagens;
@@ -63,6 +64,21 @@ export default function AbaSondagens() {
     });
   };
 
+  // Baixa o protocolo de extração de NSPT (FORMATO_EXTRACAO_NSPT.md), servido
+  // de /public. O usuário leva esse arquivo à sua IA, que devolve um JSON no
+  // schema geospt-obra para o botão Importar. Não embute IA no app: mantém a
+  // conferência humana e o app 100% local.
+  const handleBaixarFormatoPdf = () => {
+    const url = import.meta.env.BASE_URL + 'FORMATO_EXTRACAO_NSPT.md';
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'FORMATO_EXTRACAO_NSPT.md';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const handleRemover = (nome) => {
     setConfirmarRemocao(nome);
   };
@@ -89,6 +105,17 @@ export default function AbaSondagens() {
           <BotaoPrim onClick={handleAdicionar}>
             + Adicionar primeira sondagem
           </BotaoPrim>
+          <div className="mt-3">
+            <BotaoPrim tipo="secundario" onClick={handleBaixarFormatoPdf}>
+              + Adicionar sondagem a partir de um PDF com IA
+            </BotaoPrim>
+            <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto">
+              Baixa o protocolo de extração. Leve o arquivo e o PDF do laudo a
+              uma IA para gerar o JSON da obra; depois use{' '}
+              <strong>📥 Importar</strong> no header. Confira sempre os valores
+              antes de importar.
+            </p>
+          </div>
           <p className="text-xs text-slate-500 mt-4">
             Ou use <strong>📂 Balsas (demo)</strong> no header para carregar 5
             sondagens de exemplo.
@@ -106,19 +133,26 @@ export default function AbaSondagens() {
           <BotaoPrim onClick={handleAdicionar}>+ Adicionar</BotaoPrim>
         </div>
         <ul>
-          {nomes.map((n) => {
+          {nomes.map((n, i) => {
             const ativa = n === nomeAtivo;
             const s = sondagens[n];
             const nLeit = s.leituras?.length || 0;
+            const corIcone = ativa
+              ? 'text-blue-100 hover:text-white'
+              : 'text-slate-400 hover:text-slate-700';
             return (
-              <li key={n}>
+              <li
+                key={n}
+                className={
+                  'border-b border-slate-200 transition-colors ' +
+                  (ativa ? 'bg-blue-600' : 'hover:bg-slate-200')
+                }
+              >
                 <button
                   onClick={() => setUi('sondagemSelecionada', n)}
                   className={
-                    'w-full text-left px-3 py-2 text-sm border-b border-slate-200 transition-colors ' +
-                    (ativa
-                      ? 'bg-blue-600 text-white font-medium'
-                      : 'text-slate-700 hover:bg-slate-200')
+                    'w-full text-left px-3 pt-2 pb-1 text-sm ' +
+                    (ativa ? 'text-white font-medium' : 'text-slate-700')
                   }
                 >
                   <div className="font-mono">{n}</div>
@@ -130,6 +164,46 @@ export default function AbaSondagens() {
                     {nLeit} leituras · cota {s.cotaTopo_m ?? '—'} m
                   </div>
                 </button>
+                <div className="flex items-center gap-1 px-3 pb-1.5">
+                  <button
+                    onClick={() => moverSondagem(n, -1)}
+                    disabled={i === 0}
+                    className={
+                      corIcone + ' text-sm disabled:opacity-30 disabled:cursor-default'
+                    }
+                    title="Mover para cima"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => moverSondagem(n, 1)}
+                    disabled={i === nomes.length - 1}
+                    className={
+                      corIcone + ' text-sm disabled:opacity-30 disabled:cursor-default'
+                    }
+                    title="Mover para baixo"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    onClick={() => duplicarSondagem(n)}
+                    className={corIcone + ' text-sm'}
+                    title="Duplicar furo"
+                  >
+                    ⧉
+                  </button>
+                  <button
+                    onClick={() => handleRemover(n)}
+                    className={
+                      (ativa
+                        ? 'text-red-200 hover:text-white'
+                        : 'text-red-500 hover:text-red-700') + ' text-sm ml-auto'
+                    }
+                    title="Remover furo"
+                  >
+                    ✕
+                  </button>
+                </div>
               </li>
             );
           })}
