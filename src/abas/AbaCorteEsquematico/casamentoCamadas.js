@@ -287,6 +287,70 @@ export function casarBlocos(blocosA, blocosB) {
   ramificar(semParB, 'A'); // bloco A contínuo → vários B
   ramificar(semParA, 'B'); // bloco B contínuo → vários A
 
+  // CP-13h.4 — SEGUNDA PASSADA (mergulho forte). Liga órfãos remanescentes de
+  // MESMA família que NÃO cruzem os pares já estabelecidos. Captura camadas
+  // correspondentes que se afastaram tanto em cota que deixaram de se sobrepor
+  // (mergulho acentuado) — p.ex. a única argila de cada furo, entre a mesma
+  // areia e o mesmo silte, mas em cotas distintas. NÃO reabilita atravessamento:
+  // a regra de não-cruzamento barra pares que invertem a ordem vertical (uma
+  // areia rasa × uma areia profunda separadas por argila continuam acunhando). A
+  // sobreposição segue sendo a prioridade — esta passada só age sobre o que
+  // sobrou da principal e do leque.
+  const idxA = (b) => blocosA.indexOf(b);
+  const idxB = (b) => blocosB.indexOf(b);
+  const paresFirmados = conexoes
+    .map((c) => ({ ia: idxA(c.blocoA), ib: idxB(c.blocoB) }))
+    .filter((p) => p.ia >= 0 && p.ib >= 0);
+  const cruzaFirmado = (ia, ib) =>
+    paresFirmados.some((p) => (ia < p.ia) !== (ib < p.ib));
+
+  const candidatos2 = [];
+  semParA.forEach((ba) => {
+    semParB.forEach((bb) => {
+      if (ba.familia !== bb.familia) return; // só mesma família
+      const ia = idxA(ba);
+      const ib = idxB(bb);
+      if (ia < 0 || ib < 0) return;
+      candidatos2.push({ ba, bb, ia, ib, dist: Math.abs(centro(ba) - centro(bb)) });
+    });
+  });
+  candidatos2.sort((p, q) => p.dist - q.dist); // mais próximos em cota primeiro
+
+  const usados2A = new Set();
+  const usados2B = new Set();
+  for (const c of candidatos2) {
+    if (usados2A.has(c.ia) || usados2B.has(c.ib)) continue;
+    if (cruzaFirmado(c.ia, c.ib)) continue; // rejeita o que cruzaria os já firmados
+    usados2A.add(c.ia);
+    usados2B.add(c.ib);
+    paresFirmados.push({ ia: c.ia, ib: c.ib }); // passa a contar para o cruzamento
+    conexoes.push({
+      familia: c.ba.familia,
+      tipo: tipoTransicao(c.ba.familia, c.bb.familia), // mesma família → 'gradiente'
+      topoA: c.ba.cotaTopo_m,
+      baseA: c.ba.cotaBase_m,
+      topoB: c.bb.cotaTopo_m,
+      baseB: c.bb.cotaBase_m,
+      blocoA: c.ba,
+      blocoB: c.bb,
+      mergulhoTopo_m: +(c.ba.cotaTopo_m - c.bb.cotaTopo_m).toFixed(3),
+      mergulhoBase_m: +(c.ba.cotaBase_m - c.bb.cotaBase_m).toFixed(3),
+      soloA: c.ba.solo,
+      soloB: c.bb.solo,
+      mergulhoForte: true, // ligado sem sobreposição de cota (mergulho acentuado)
+    });
+  }
+  if (usados2A.size > 0) {
+    const restA = semParA.filter((b) => !usados2A.has(idxA(b)));
+    semParA.length = 0;
+    semParA.push(...restA);
+  }
+  if (usados2B.size > 0) {
+    const restB = semParB.filter((b) => !usados2B.has(idxB(b)));
+    semParB.length = 0;
+    semParB.push(...restB);
+  }
+
   // Mantém as conexões na ordem vertical de A (topo→base) para desenho estável.
   conexoes.sort((c1, c2) => c2.topoA - c1.topoA);
 
@@ -413,7 +477,36 @@ export function classificarCunha(bloco, blocosDoFuro, blocosVizinho, lado) {
     return { bloco, lado, tipoCunha: 'borda', frac: 1.0, cotaAlvo };
   }
 
-  // Interior: SEMPRE atravessa o vão inteiro até a face do vizinho, no próprio
-  // nível médio (não há mais distinção fino/espesso — toda camada é solo real).
-  return { bloco, lado, tipoCunha: 'interior', frac: 1.0, cotaAlvo: centroOrfao };
+  // Interior (CP-13h.3): a camada some lateralmente ENTRE duas famílias. Quando
+  // os blocos imediatamente acima (P) e abaixo (Q) do órfão são de famílias
+  // DIFERENTES e ambos têm correspondente no furo vizinho, a ponta da cunha deve
+  // cair na JUNÇÃO desses vizinhos — onde a base do correspondente de P encontra
+  // o topo do correspondente de Q —, que é exatamente onde o trapézio de cima e
+  // o de baixo se encontram na face oposta. Mirar o centro do próprio bloco
+  // (comportamento anterior) deixava VAZIO acima da cunha e SOBREPOSIÇÃO abaixo
+  // sempre que essa junção ficava numa cota diferente do centro. Sem um par P/Q
+  // bem definido (borda já tratada acima; mesma família; ou correspondente
+  // ausente no vizinho), mantém o centro do órfão como fallback seguro.
+  const blocoAcima = idx > 0 ? blocosDoFuro[idx - 1] : null;
+  const blocoAbaixo = idx < blocosDoFuro.length - 1 ? blocosDoFuro[idx + 1] : null;
+  let cotaAlvo = centroOrfao;
+  if (
+    blocoAcima &&
+    blocoAbaixo &&
+    blocoAcima.familia !== blocoAbaixo.familia &&
+    Array.isArray(blocosVizinho)
+  ) {
+    const sobrepoe = (a, b) =>
+      Math.min(a.cotaTopo_m, b.cotaTopo_m) - Math.max(a.cotaBase_m, b.cotaBase_m);
+    const correspondente = (ref) =>
+      blocosVizinho
+        .filter((b) => b.familia === ref.familia && sobrepoe(b, ref) >= 0)
+        .sort((x, y) => sobrepoe(y, ref) - sobrepoe(x, ref))[0] || null;
+    const vizAcima = correspondente(blocoAcima); // mesma família que P
+    const vizAbaixo = correspondente(blocoAbaixo); // mesma família que Q
+    if (vizAcima && vizAbaixo) {
+      cotaAlvo = (vizAcima.cotaBase_m + vizAbaixo.cotaTopo_m) / 2;
+    }
+  }
+  return { bloco, lado, tipoCunha: 'interior', frac: 1.0, cotaAlvo };
 }
