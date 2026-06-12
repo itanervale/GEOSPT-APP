@@ -13,6 +13,7 @@
  * ============================================================================ */
 
 import { GeoSPT } from '@/engine/geospt-engine';
+import { geometriaEstaca } from '@/domain/estacas';
 import {
   perfilEnvoltoriaUtil,
   opcoesParaEstaca,
@@ -146,7 +147,8 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
     [
       'Nome',
       'Tipo',
-      'Diâmetro (m)',
+      'Formato',
+      'Dimensão (m) — Ø ou lado',
       'Cota arrasamento (m)',
       'Carga prevista (tf)',
       'Cap. estrutural custom (tf)',
@@ -159,7 +161,8 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
     estRows.push([
       e.nome,
       e.tipoEstaca ?? '',
-      e.diametro_m ?? '',
+      e.formato === 'quadrada' ? 'quadrada' : 'circular',
+      (e.dimensao_m ?? e.diametro_m) ?? '',
       e.cotaArrasamento_m ?? '',
       e.cargaPrevista_tf ?? '',
       e.cargaEstrutural_tf_custom ?? '(tabela)',
@@ -222,9 +225,19 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
         [
           'Tipo: ' +
             estacaAlvo.tipoEstaca +
-            ' | D=' +
-            estacaAlvo.diametro_m +
-            'm | arrasamento=' +
+            (estacaAlvo.formato === 'quadrada' ? ' (quadrada) | L=' : ' | D=') +
+            (estacaAlvo.dimensao_m ?? estacaAlvo.diametro_m) +
+            'm' +
+            (() => {
+              const g = geometriaEstaca(
+                estacaAlvo.formato === 'quadrada' ? 'quadrada' : 'circular',
+                estacaAlvo.dimensao_m ?? estacaAlvo.diametro_m
+              );
+              return g
+                ? ' | Ap=' + g.area_ponta_m2.toFixed(4) + 'm² | U=' + g.perimetro_m.toFixed(4) + 'm'
+                : '';
+            })() +
+            ' | arrasamento=' +
             estacaAlvo.cotaArrasamento_m +
             'm | carga prev=' +
             (estacaAlvo.cargaPrevista_tf || '—') +

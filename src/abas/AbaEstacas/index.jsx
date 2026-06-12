@@ -33,7 +33,11 @@ import { GeoSPT } from '@/engine/geospt-engine';
 import BotaoPrim from '@/components/ui/BotaoPrim';
 import ModalConfirmar from '@/components/ui/ModalConfirmar';
 import MiniMapaSVG from '@/components/viz/MiniMapaSVG';
-import { labelTipoEstaca } from '@/domain/estacas';
+import {
+  labelTipoEstaca,
+  rotuloDimensaoCurto,
+  avaliarAlertaA6,
+} from '@/domain/estacas';
 import ModalEditarEstaca from './ModalEditarEstaca';
 import PainelConfigCalculo from './PainelConfigCalculo';
 import { classesCor } from '@/state/dominiosHelper';
@@ -91,7 +95,9 @@ export default function AbaEstacas() {
         nome: candidato,
         coordenadas: { x: null, y: null },
         tipoEstaca: 'helice_continua',
-        diametro_m: 0.4,
+        formato: 'circular',
+        dimensao_m: 0.4,
+        diametro_m: 0.4, // espelho retrocompatível de dimensao_m (CP-14)
         cotaArrasamento_m: null,
         cargaPrevista_tf: null,
         dominioId: null,
@@ -182,7 +188,9 @@ export default function AbaEstacas() {
                       <th className="px-1 py-1.5 text-right">X</th>
                       <th className="px-1 py-1.5 text-right">Y</th>
                       <th className="px-1.5 py-1.5 text-left">Tipo</th>
-                      <th className="px-1 py-1.5 text-right">Ø</th>
+                      <th className="px-1 py-1.5 text-right" title="Dimensão: Ø diâmetro (circular) ou □ lado (quadrada), em cm">
+                        Dim.
+                      </th>
                       <th className="px-1 py-1.5 text-right" title="Cota de arrasamento (m)">
                         Arr. (m)
                       </th>
@@ -215,8 +223,16 @@ export default function AbaEstacas() {
                         >
                           {obterLabelTipo(e.tipoEstaca)}
                         </td>
-                        <td className="px-1 py-1 font-mono text-right">
-                          {e.diametro_m ? Math.round(e.diametro_m * 100) : '—'}
+                        <td className="px-1 py-1 font-mono text-right whitespace-nowrap">
+                          {rotuloDimensaoCurto(e) || '—'}
+                          {avaliarAlertaA6(e) && (
+                            <span
+                              className="ml-1 text-amber-600 cursor-help"
+                              title={avaliarAlertaA6(e).mensagem}
+                            >
+                              ⚠A6
+                            </span>
+                          )}
                         </td>
                         <td className="px-1 py-1 font-mono text-right">
                           {e.cotaArrasamento_m ?? '—'}
@@ -283,6 +299,30 @@ export default function AbaEstacas() {
               </div>
             )}
           </div>
+
+          {/* CP-14 — Avisos A6 (dimensão fora da faixa usual). Informativo:
+              NÃO impede a verificação da capacidade de carga. */}
+          {(() => {
+            const avisosA6 = estacas
+              .map((e) => avaliarAlertaA6(e))
+              .filter(Boolean);
+            if (avisosA6.length === 0) return null;
+            return (
+              <div className="bg-amber-50 border border-amber-300 rounded p-2">
+                <div className="text-xs font-bold text-amber-800 mb-1">
+                  ⚠ Alerta A6 — dimensão de estaca fora da faixa usual (15–120 cm)
+                </div>
+                <ul className="text-xs text-amber-800 space-y-0.5">
+                  {avisosA6.map((a, i) => (
+                    <li key={i}>
+                      <span className="font-mono font-bold">{a.estaca}</span>:{' '}
+                      {a.mensagem}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
 
           {/* Configurações globais de cálculo */}
           <PainelConfigCalculo

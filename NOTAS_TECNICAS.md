@@ -1058,3 +1058,81 @@ Dois ajustes de feedback do usuário.
    (senão o aviso volta).
 
 Regressão 32,84 ✓, casamento 45 ✓, geometria 12 ✓, build ✓.
+
+---
+
+## CP-14 — Formato de estaca (circular/quadrada), dimensão livre e alerta A6
+
+### O que mudou
+
+1. ENGINE (geospt-engine.js) — diff mínimo e RETROCOMPATÍVEL, pré-validado:
+   - `AV_F1_F2_fn(tipoEstaca, diametro_m, B_m)` — novo 3º parâmetro opcional
+     (dimensão transversal). Pré-moldada: F1 = 1 + B/0,80 quando B_m vier;
+     senão deriva de diametro_m como sempre.
+   - `_calcularGenerico`: Ap_m2 e U_m aceitam `opcoes.area_ponta_m2` e
+     `opcoes.perimetro_m` (quadrada: Ap=L², U=4·L); ausentes → π·D²/4 e π·D,
+     idêntico ao comportamento anterior. `B_m = opcoes.dimensaoTransversal_m ?? D_m`.
+   - As 2 chamadas de AV_F1_F2_fn passam B_m.
+   VALIDAÇÃO: 216 testes verdes (32,84 tf · casamento 45 · geometria 12);
+   chamada sem campos novos produz memorial BYTE A BYTE idêntico ao anterior;
+   quadrada L=0,40: Ap=0,1600, U=1,600, razão Q quad/circ = 4/π = 1,2732 exata;
+   F1: L=0,40→1,50; L=0,60→1,75.
+
+2. MODELO (domain/estacas.js):
+   - `estaca.formato` ('circular' padrão | 'quadrada', só pré-moldada) e
+     `estaca.dimensao_m` (diâmetro ou lado, m).
+   - INVARIANTE: `diametro_m` é ESPELHO de `dimensao_m`, sempre preenchido.
+     Por isso consumidores legados (largura no corte, mini-mapa, check da
+     Aba 6, engine sem campos novos) funcionam sem alteração.
+   - Migração em carregarObra: estaca antiga (só diametro_m) →
+     formato='circular', dimensao_m=diametro_m (normalizarEstacaFormato).
+   - O AV_F1_F2_fn RECONSTRUÍDO dos coeficientes customizados (ObraProvider)
+     foi alinhado à assinatura de 3 parâmetros.
+
+3. UI (Aba 5): dropdown de diâmetro REMOVIDO → campo numérico livre em cm;
+   seletor de formato aparece apenas para pré-moldada. Geometria propaga à
+   engine por UM único ponto: construirOpcoesCalculo (usado por Aba 6, corte,
+   XLSX, PDFs e auditoria).
+
+4. ALERTA A6 — dimensão fora da faixa usual (15–120 cm, diâmetro OU lado):
+   - Preenche a lacuna histórica da numeração (A6 não existia).
+   - É o único alerta sobre ESTACA (os demais analisam sondagens): exibido
+     inline no formulário, na listagem da Aba 5 (badge + painel) e gravado no
+     JSON de auditoria (campo `alertaA6` por estaca). NÃO bloqueia salvamento
+     nem cálculo. Constantes: A6_DIMENSAO_MIN_M=0,15; A6_DIMENSAO_MAX_M=1,20.
+
+5. CARGA ESTRUTURAL da quadrada: a tabela da engine é indexada por DIÂMETRO
+   de seção circular. DECISÃO: lado_cm é usado como CHAVE EQUIVALENTE
+   (opção prevista no prompt do CP-14) — conservadora, pois
+   A_quadrada = L² > π·L²/4 = A_circular, logo a capacidade estrutural real
+   da quadrada é maior que a tabelada para o círculo de mesma dimensão.
+   A UI declara isso explicitamente e recomenda o override do fabricante
+   (`cargaEstrutural_tf_custom`, que tem precedência). Dimensão sem entrada
+   na tabela (qualquer formato) → Qadm_estrutural = null (sem limite
+   estrutural automático, aviso na UI) — NENHUM valor é inventado.
+   Motivo da decisão: a alternativa (UI dizendo "sem valor" enquanto a
+   engine, via diametro_m espelhado, aplica o valor tabelado) criaria
+   divergência entre UI e memorial — inaceitável.
+
+### Cabos soltos conhecidos
+- `validation.validarEstaca` (engine) ainda valida diâmetro contra a tabela
+  e rejeitaria dimensões livres — porém NÃO é chamada por nenhum arquivo do
+  app (verificado por grep). Se for ativada no futuro, precisa de revisão.
+
+
+### CP-14f — Ajustes pós-validação do usuário
+
+1. A6 TAMBÉM no painel da Aba 4 (construirAlertas.jsx), entre A5 e A7,
+   severidade 'info' — agregando todas as estacas fora da faixa numa única
+   entrada. Permanece na Aba 5 (inline + painel) e no JSON de auditoria.
+2. GEOMETRIA DA SEÇÃO (A_p e U) agora visível em 5 locais:
+   - Modal da estaca (ao vivo, sob o campo de dimensão);
+   - Detalhamento da Aba 6 (linha "Geometria da seção" no topo, lendo
+     dq.Ap_m2/dq.U_m do memorial da engine — valores EFETIVOS do cálculo);
+   - Cabeçalho da estaca nos PDFs (blocoEstacaCabecalho — herda nos dois);
+   - Linha de cabeçalho dos memoriais XLSX (Ap=...m² | U=...m);
+   - JSON de auditoria: bloco estaca.geometriaSecao
+     {area_ponta_m2, perimetro_m, dimensaoTransversal_m}.
+   Racional: A_p e U são constantes por estaca — exibir por linha do
+   memorial seria ruído; o cabeçalho é o local canônico. Na Aba 6 a fonte é
+   o memorial da engine (não recomputado), garantindo fidelidade ao cálculo.

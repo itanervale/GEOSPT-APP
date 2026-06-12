@@ -292,6 +292,8 @@ export default function ModalCorteEsquematico({
           nome: it.nome,
           cotaArrasamento_m: e.cotaArrasamento_m,
           diametro_m: e.diametro_m,
+          formato: e.formato, // CP-14: rótulo Ø/□ no corte
+          dimensao_m: e.dimensao_m,
           tipoEstaca: e.tipoEstaca,
           cargaPrevista_tf: e.cargaPrevista_tf,
           x: e.coordenadas?.x,

@@ -62,6 +62,15 @@ export default function DetalhamentoLinha({ dq, av, estaca }) {
         );
       })()}
 
+      {/* CP-14f — Geometria da seção (constante para a estaca nesta linha).
+          lg:col-span-2: ocupa as DUAS colunas do grid (faixa fina), senão
+          vira célula de 1 coluna esticada à altura do bloco DQ vizinho. */}
+      <div className="lg:col-span-2 bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-[10px] font-mono">
+        <span className="font-bold text-slate-700">Geometria da seção:</span>{' '}
+        A_p = <strong>{dq.Ap_m2?.toFixed(4)} m²</strong> · U (perímetro) ={' '}
+        <strong>{dq.U_m?.toFixed(4)} m</strong>
+      </div>
+
       {/* Bloco DQ */}
       <div className="bg-white border border-blue-200 rounded p-2 text-[10px]">
         <div className="font-bold text-blue-900 mb-1.5 border-b border-blue-100 pb-1">

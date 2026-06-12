@@ -20,6 +20,7 @@
  * ============================================================================ */
 
 import { GeoSPT } from '@/engine/geospt-engine';
+import { formatoDe, dimensaoDe, geometriaEstaca } from '@/domain/estacas';
 
 // ----- Constantes de UI -----
 export const MODOS_CALCULO = [
@@ -251,9 +252,22 @@ export function construirOpcoesCalculo(estaca, params) {
     estaca.cotaArrasamento_m == null
       ? estaca.cotaArrasamento_m
       : Math.floor(estaca.cotaArrasamento_m);
+  // CP-14 — geometria por formato (circular: π·D²/4, π·D | quadrada: L², 4·L).
+  // Campos opcionais da engine v2.0.7+: ausentes → deriva do diâmetro (idêntico
+  // ao comportamento anterior). diametro_m segue espelhado por compatibilidade.
+  const formato = formatoDe(estaca);
+  const dimensao_m = dimensaoDe(estaca);
+  const geo = geometriaEstaca(formato, dimensao_m);
   return {
     tipoEstaca: estaca.tipoEstaca,
-    diametro_m: estaca.diametro_m,
+    diametro_m: dimensao_m ?? estaca.diametro_m,
+    ...(geo
+      ? {
+          area_ponta_m2: geo.area_ponta_m2,
+          perimetro_m: geo.perimetro_m,
+          dimensaoTransversal_m: geo.dimensaoTransversal_m,
+        }
+      : {}),
     cotaArrasamento_m: cotaArrasamentoInteira,
     desprezaUltimoMetroAtrito: params.desprezaUltimoMetroAtrito ?? true,
     aplicaRedutorPonta: params.aplicaFatorRedutorPonta ?? false,

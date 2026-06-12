@@ -1,3 +1,4 @@
+import { geometriaEstaca } from '@/domain/estacas';
 /* ============================================================================
  * pdfHelpers — infra compartilhada dos relatórios HTML/PDF (compacto e completo)
  *
@@ -226,8 +227,21 @@ ${(memDq || [])
 // Bloco de identificação + cota sugerida para uma estaca
 export function blocoEstacaCabecalho(estaca, params, cotaConsM1, temAlvo, carga) {
   return `<table>
-  <tr><th style="width:25%">Tipo de estaca</th><td>${escHtml(estaca.tipoEstaca)}</td>
-      <th style="width:25%">Diâmetro</th><td class="value">${estaca.diametro_m} m</td></tr>
+  <tr><th style="width:25%">Tipo de estaca</th><td>${escHtml(estaca.tipoEstaca)}${
+    estaca.formato === 'quadrada' ? ' — seção quadrada' : ''
+  }</td>
+      <th style="width:25%">${estaca.formato === 'quadrada' ? 'Lado' : 'Diâmetro'}</th><td class="value">${
+        estaca.dimensao_m ?? estaca.diametro_m
+      } m</td></tr>
+  <tr><th>Geometria da seção</th><td class="value" colspan="3">A_p = ${(() => {
+    const g = geometriaEstaca(
+      estaca.formato === 'quadrada' ? 'quadrada' : 'circular',
+      estaca.dimensao_m ?? estaca.diametro_m
+    );
+    return g
+      ? `${g.area_ponta_m2.toFixed(4)} m² · U (perímetro) = ${g.perimetro_m.toFixed(4)} m`
+      : '—';
+  })()}</td></tr>
   <tr><th>Cota de arrasamento</th><td class="value">${estaca.cotaArrasamento_m} m</td>
       <th>Carga prevista</th><td class="value">${temAlvo ? carga + ' tf' : '<em>não definida</em>'}</td></tr>
   <tr><th>Coordenadas</th><td>${estaca.coordenadas ? `(${estaca.coordenadas.x ?? '—'}, ${estaca.coordenadas.y ?? '—'})` : '—'}</td>

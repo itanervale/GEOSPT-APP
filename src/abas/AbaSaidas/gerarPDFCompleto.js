@@ -326,7 +326,9 @@ export function gerarPDFCompleto(obra, payloadJson) {
       ? cs.dq.Qadm_final_tf >= c.carga && cs.av.Qadm_final_tf >= c.carga
       : null;
     return {
-      nome: e.nome, tipo: e.tipoEstaca, D: e.diametro_m, arr: e.cotaArrasamento_m,
+      nome: e.nome, tipo: e.tipoEstaca,
+      formato: e.formato === 'quadrada' ? 'quadrada' : 'circular',
+      D: e.dimensao_m ?? e.diametro_m, arr: e.cotaArrasamento_m,
       carga: c.carga, cotaSug: cs.cota_m, regente: cs.regente,
       qDq: cs.dq.Qadm_final_tf, qAv: cs.av.Qadm_final_tf,
       statusGeral: temAlvo ? (atende ? 'atende' : 'não atende') : 'sem alvo',
@@ -557,11 +559,11 @@ ${secaoAnaliseCritica(aterroV)}
 ${svgMiniMapa(sondagens, estacas)}
 <h3>5.2. Tabela resumo</h3>
 <table>
-<thead><tr><th>Estaca</th><th>Tipo</th><th>D (m)</th><th>Arrasamento (m)</th><th>Carga (tf)</th><th>Cota sugerida (m)</th><th>Limitante</th><th>Q_adm DQ (tf)</th><th>Q_adm AV (tf)</th><th>Status</th></tr></thead>
+<thead><tr><th>Estaca</th><th>Tipo</th><th>Dimensão (m) — Ø/lado</th><th>Arrasamento (m)</th><th>Carga (tf)</th><th>Cota sugerida (m)</th><th>Limitante</th><th>Q_adm DQ (tf)</th><th>Q_adm AV (tf)</th><th>Status</th></tr></thead>
 <tbody>
 ${tabelaGeral.map((t) => {
     if (!t.cotaSug) return `<tr><td><strong>${escHtml(t.nome)}</strong></td><td colspan="9"><em>${escHtml(t.statusGeral)}</em></td></tr>`;
-    return `<tr><td><strong>${escHtml(t.nome)}</strong></td><td>${escHtml(t.tipo)}</td><td class="value text-right">${t.D}</td><td class="value text-right">${t.arr}</td><td class="value text-right">${t.carga || '—'}</td>
+    return `<tr><td><strong>${escHtml(t.nome)}</strong></td><td>${escHtml(t.tipo)}</td><td class="value text-right">${t.D}${t.formato === 'quadrada' ? ' (quadrada)' : ''}</td><td class="value text-right">${t.arr}</td><td class="value text-right">${t.carga || '—'}</td>
   <td class="value text-right">${t.cotaSug}</td>
   <td><span class="badge ${t.regente === 'DQ' ? 'badge-dq' : 'badge-av'}">${t.regente}</span></td>
   <td class="value text-right">${t.qDq?.toFixed(2)}</td>

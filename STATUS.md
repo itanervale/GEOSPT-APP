@@ -226,3 +226,22 @@ capturar pelo menos:
 
 > As capturas devem ser feitas com o app rodando (`npm run dev`), idealmente importando uma
 > obra de exemplo para as telas não ficarem vazias.
+
+
+## CP-14 — Formato de estaca (circular/quadrada) + dimensão livre + alerta A6
+
+- Engine: diff mínimo retrocompatível (AV_F1_F2_fn com B_m; Ap/U aceitos via
+  opcoes.area_ponta_m2/perimetro_m; B_m = dimensaoTransversal_m ?? D_m).
+  216 testes verdes; chamadas legadas byte a byte idênticas.
+- Modelo: estaca.formato ('circular'|'quadrada', quadrada só pré-moldada) +
+  estaca.dimensao_m; diametro_m mantido como ESPELHO (retrocompatibilidade).
+  Migração automática de obras antigas em carregarObra.
+- UI Aba 5: campo livre de dimensão (cm) substitui o dropdown; seletor de
+  formato só para pré-moldada; alerta A6 (15–120 cm) inline + painel na Aba 5
+  + JSON de auditoria — NÃO bloqueia o cálculo.
+- Carga estrutural: lado_cm como chave equivalente da tabela (conservador);
+  override do fabricante tem precedência; sem entrada → null explícito.
+- Exportações (XLSX, PDFs, auditoria) exibem formato + dimensão (Ø/lado).
+- Manual e NOTAS_TECNICAS atualizados (A6 documentado).
+- Validação: 32,84 tf · casamento 45 · geometria 12 · build OK · 12 checks
+  sintéticos CP-14 (geometria, F1, razão 4/π, override, limites A6).

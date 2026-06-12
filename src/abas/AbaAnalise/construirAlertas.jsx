@@ -4,7 +4,9 @@
  * Recebe (compat, sondagens, estacas, aterroCorteInfo) e devolve array de:
  *   { id, icone, severidade, titulo, descricao (JSX), implicacao (string) }
  *
- * IDs (não inventar): A1, A2, A3, A4, A5, A7, A8, A9, A10
+ * IDs (não inventar): A1, A2, A3, A4, A5, A6, A7, A8, A9, A10
+ *   A6 (CP-14) é o único alerta sobre ESTACA (dimensão fora de 15–120 cm);
+ *   os demais analisam sondagens. Informativo: não bloqueia cálculo.
  *   Nota: A6 não existe (pulou no artifact). Preservado para compatibilidade
  *   com qualquer referência externa ao app. A9_info é variante quando não há
  *   estacas cadastradas.
@@ -12,7 +14,7 @@
  * Severidades:
  *   critico  — A1 (furo crítico domina >60%)
  *   moderado — A2, A3, A4, A7, A8, A9, A10
- *   info     — A5, A9_info
+ *   info     — A5, A6, A9_info
  *
  * Limites (constantes do artifact, não alterar sem revisão técnica):
  *   A1: furoCriticoPct > 0.6 (60%)
@@ -26,6 +28,7 @@
  * ============================================================================ */
 
 import React from 'react';
+import { avaliarAlertaA6 } from '@/domain/estacas';
 
 export function construirAlertas(compat, sondagens, estacas, aterroCorteInfo) {
   const alertas = [];
@@ -147,6 +150,35 @@ export function construirAlertas(compat, sondagens, estacas, aterroCorteInfo) {
         "Nenhuma sondagem tem nível d'água registrado (NA inicial ou final).",
       implicacao:
         'Pode ser ausência real ou limitação da execução. Não afeta diretamente o cálculo Décourt/Aoki-Velloso (já consideram NSPT bruto), mas é dado relevante para análise de recalques e empuxo.',
+    });
+  }
+
+  // ---------- A6 — Dimensão de estaca fora da faixa usual (CP-14) ----------
+  // Único alerta sobre ESTACA (diâmetro/lado < 15 cm ou > 120 cm). Também
+  // exibido na Aba 5 e gravado no JSON de auditoria. NÃO bloqueia o cálculo.
+  const estacasA6 = (estacas || [])
+    .map((e) => ({ e, a: avaliarAlertaA6(e) }))
+    .filter((x) => x.a);
+  if (estacasA6.length > 0) {
+    alertas.push({
+      id: 'A6',
+      icone: 'ℹ',
+      severidade: 'info',
+      titulo: 'Dimensão de estaca fora da faixa usual (15–120 cm)',
+      descricao: (
+        <>
+          Estaca(s):{' '}
+          <strong className="font-mono">
+            {estacasA6.map((x) => x.e.nome).join(', ')}
+          </strong>
+          .{' '}
+          {estacasA6
+            .map((x) => `${x.e.nome}: ${x.a.mensagem.replace('A6 — ', '')}`)
+            .join(' ')}
+        </>
+      ),
+      implicacao:
+        'Possível erro de digitação ou dimensão atípica. Verificar o valor na Aba 5. O alerta é informativo e NÃO impede a verificação da capacidade de carga.',
     });
   }
 

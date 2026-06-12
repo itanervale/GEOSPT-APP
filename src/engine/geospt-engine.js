@@ -121,9 +121,10 @@
       },
 
       // Tabela 1.8 — F₁ e F₂ AV
-      AV_F1_F2_fn: function (tipoEstaca, diametro_m) {
+      AV_F1_F2_fn: function (tipoEstaca, diametro_m, B_m) {
         if (tipoEstaca === 'premoldada') {
-          const F1 = 1 + diametro_m / 0.80;
+          const dimTransversal = B_m != null ? B_m : diametro_m;
+          const F1 = 1 + dimTransversal / 0.80;
           return { F1: F1, F2: 2 * F1 };
         }
         // helice_continua, escavada_seco, escavada_fluido, raiz → F1=2.00, F2=4.00
@@ -729,9 +730,19 @@
       const trat = opcoes.tratamentoPonta || 'calculado';
       const limitaP = opcoes.limitaPontaPorAtrito === true;
 
-      // Geometria
-      const Ap_m2 = Math.PI * D_m * D_m / 4;
-      const U_m = Math.PI * D_m;
+      // Geometria — RETROCOMPATÍVEL: usa area_ponta_m2 / perimetro_m se vierem
+      // (estaca quadrada: Ap=L², U=4·L); senão deriva do diâmetro como sempre.
+      const Ap_m2 =
+        opcoes.area_ponta_m2 != null
+          ? opcoes.area_ponta_m2
+          : (Math.PI * D_m * D_m) / 4;
+      const U_m =
+        opcoes.perimetro_m != null ? opcoes.perimetro_m : Math.PI * D_m;
+      // Dimensão transversal para o F1 do Aoki-Velloso (pré-moldada).
+      const B_m =
+        opcoes.dimensaoTransversal_m != null
+          ? opcoes.dimensaoTransversal_m
+          : D_m;
 
       // Carga estrutural
       // Override por estaca (opcoes.cargaEstrutural_tf_override) tem precedência
@@ -822,7 +833,7 @@
           } else {
             // AV
             const av = coefs.AV_K_alpha[dadoCamada.solo];
-            const F1F2 = coefs.AV_F1_F2_fn(tipo, D_m);
+            const F1F2 = coefs.AV_F1_F2_fn(tipo, D_m, B_m);
             // ⚠️ BUG FATOR 100: α está em %, converter para decimal
             const alpha_decimal = av.alpha_pct / 100;
             fl_kPa = alpha_decimal * av.K_kPa * NL / F1F2.F2;
@@ -921,7 +932,7 @@
             qp_kPa = C_kPa * np_calc * alpha_dq;
           } else {
             const av = coefs.AV_K_alpha[dadoPonta.solo];
-            const F1F2 = coefs.AV_F1_F2_fn(tipo, D_m);
+            const F1F2 = coefs.AV_F1_F2_fn(tipo, D_m, B_m);
             K_kPa = av.K_kPa;
             alpha_av_pct = av.alpha_pct;
             F1_av = F1F2.F1;

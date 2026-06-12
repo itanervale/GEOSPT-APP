@@ -301,7 +301,7 @@ npm run preview</code></pre>
   <li><strong>Aba 2 — Sondagens.</strong> Cadastre <strong>pelo menos 2 furos</strong>: nome, cota de topo, profundidade, critério de paralisação, nível d'água e as leituras de NSPT metro a metro.</li>
   <li><strong>Aba 3 — Compatibilização.</strong> Ajuste a janela de compatibilização se necessário e clique em <code>Recalcular</code>. Confira a tabela densa e o perfil consolidado.</li>
   <li><strong>Aba 4 — Análise.</strong> Leia os alertas A1–A10. Se quiser agrupar furos semelhantes, clique em <code>Calcular</code> na sugestão de domínios e aplique.</li>
-  <li><strong>Aba 5 — Estacas.</strong> Adicione uma estaca (tipo, diâmetro, cota de arrasamento, carga prevista) e revise as configurações globais de cálculo.</li>
+  <li><strong>Aba 5 — Estacas.</strong> Adicione uma estaca (tipo, formato e dimensão da seção, cota de arrasamento, carga prevista) e revise as configurações globais de cálculo.</li>
   <li><strong>Aba 6 — Capacidade.</strong> Selecione a estaca e o modo de cálculo. Leia a Q<sub>adm</sub>, a carga prevista e a margem (colorida pelo sinal).</li>
   <li><strong>Aba 7 — Saídas.</strong> Exporte o <strong>JSON</strong> (obra salva), o <strong>XLSX</strong> (memoriais) e/ou o <strong>PDF</strong> (documento de entrega).</li>
 </ol>
@@ -432,7 +432,7 @@ npm run preview</code></pre>
 </div>
 
 <h4>Os alertas A1–A10</h4>
-<p>A análise gera alertas conforme limites técnicos. Observe duas particularidades da numeração: <strong>não existe A6</strong> (foi pulado) e, quando não há estaca cadastrada com cota de arrasamento, o alerta A9 vira a variante informativa <strong>A9_info</strong>.</p>
+<p>A análise gera alertas conforme limites técnicos. Observe duas particularidades: o <strong>A6</strong> (dimensão de estaca fora da faixa usual) é o único alerta sobre <strong>estacas</strong> — aparece no painel da Aba 4, no formulário e na listagem da Aba 5, e é registrado no JSON de auditoria; e, quando não há estaca cadastrada com cota de arrasamento, o alerta A9 vira a variante informativa <strong>A9_info</strong>.</p>
 
 <div class="tbl-wrap">
 <table>
@@ -443,6 +443,7 @@ npm run preview</code></pre>
     <tr><td><strong>A3</strong></td><td><span class="badge media">moderado</span></td><td>Subamostragem em parte do perfil</td><td>Mais de 30% das cotas têm menos de 3 furos representados</td><td>Compatibilização pouco robusta; considerar sondagem complementar.</td></tr>
     <tr><td><strong>A4</strong></td><td><span class="badge media">moderado</span></td><td>Heterogeneidade de famílias entre furos</td><td>Mais de 20% das cotas têm famílias diferentes entre os furos</td><td>Transição lateral de litologia; avaliar perfis paralelos (Modo 2.3) ou domínios distintos.</td></tr>
     <tr><td><strong>A5</strong></td><td><span class="badge baixa">info</span></td><td>Nível d'água não registrado</td><td>Nenhuma sondagem tem NA (inicial ou final)</td><td>Não afeta Décourt/Aoki, mas é relevante para recalques e empuxo.</td></tr>
+    <tr><td><strong>A6</strong></td><td><span class="badge baixa">aviso</span></td><td>Dimensão de estaca fora da faixa usual</td><td>Diâmetro (circular) ou lado (quadrada) menor que 15 cm ou maior que 120 cm</td><td>Possível erro de digitação ou dimensão atípica. Exibido nas Abas 4 e 5 e no JSON de auditoria; <strong>não bloqueia</strong> o cálculo de capacidade.</td></tr>
     <tr><td><strong>A7</strong></td><td><span class="badge media">moderado</span></td><td>Sondagens paralisadas por solicitação do contratante</td><td>Furo com critério de paralisação = solicitação do contratante</td><td>Camadas inferiores não amostradas; capacidade pode ser sub ou superestimada.</td></tr>
     <tr><td><strong>A8</strong></td><td><span class="badge media">moderado</span></td><td>Inversão de grande magnitude</td><td>NSPT cai mais de 10 golpes entre cotas</td><td>Inversão acentuada; verificar erro de transcrição ou lente encoberta.</td></tr>
     <tr><td><strong>A9</strong></td><td><span class="badge media">moderado</span></td><td>Aterro espesso previsto sob a estaca</td><td>Cota de arrasamento &gt; 2,5 m <strong>acima</strong> da média dos topos das sondagens</td><td>Aterro espesso; verificar material, compactação e sondagens no aterro.</td></tr>
@@ -466,7 +467,19 @@ npm run preview</code></pre>
   <li><strong>Editar</strong> — ícone de lápis (✎) abre o formulário com os dados da estaca;</li>
   <li><strong>Remover</strong> — ícone (✕), com confirmação.</li>
 </ul>
-<p>Para cada estaca define-se: tipo (hélice contínua, pré-moldada, raiz, etc.), diâmetro, cota de arrasamento, carga prevista e coordenadas.</p>
+<p>Para cada estaca define-se: tipo (hélice contínua, pré-moldada, raiz, etc.), <strong>formato e dimensão da seção</strong>, cota de arrasamento, carga prevista e coordenadas.</p>
+
+<h4>Formato e dimensão da seção</h4>
+<p>A dimensão é um <strong>campo numérico livre, em cm</strong> (não há mais lista fixa de diâmetros). Para a estaca <strong>pré-moldada</strong>, escolhe-se também o formato da seção:</p>
+<ul>
+  <li><strong>&#9679; Circular</strong> — informa-se o <strong>diâmetro</strong> (D). Geometria de cálculo: A_p = &pi;&middot;D&sup2;/4 e U = &pi;&middot;D;</li>
+  <li><strong>&#9632; Quadrada</strong> — informa-se o <strong>lado</strong> (L). Geometria de cálculo: A_p = L&sup2; e U = 4&middot;L. No Aoki-Velloso, F1 = 1 + L/0,80.</li>
+</ul>
+<p>Os demais tipos (hélice contínua, escavadas, raiz) são circulares por natureza executiva. O formulário exibe <strong>A_p e U ao vivo</strong> conforme você digita a dimensão — os mesmos valores aparecem no detalhamento da Aba 6, nos PDFs, no XLSX e no JSON de auditoria (bloco <code>geometriaSecao</code>).</p>
+<p>Dimensão menor que 15 cm ou maior que 120 cm dispara o alerta <strong>A6</strong> (ver Aba 4) — informativo, <strong>não bloqueia</strong> o cálculo.</p>
+
+<h4>Carga estrutural admissível</h4>
+<p>A tabela interna de carga estrutural é indexada por <strong>diâmetro de seção circular</strong>. Para a estaca quadrada, o lado é usado como chave equivalente — decisão <strong>conservadora</strong> (a área da seção quadrada, L&sup2;, é maior que a do círculo de mesma dimensão, &pi;&middot;L&sup2;/4, logo a capacidade estrutural real é maior que a tabelada). Recomenda-se informar o <strong>valor do fabricante</strong> no campo de capacidade estrutural (override), que tem precedência. Dimensão sem entrada na tabela &rarr; sem limite estrutural automático (o app avisa; nenhum valor é inventado).</p>
 
 <h4>Configurações globais de cálculo</h4>
 <p>Painel <code>&#x2699; Configurações globais de cálculo</code>:</p>
@@ -526,7 +539,7 @@ npm run preview</code></pre>
 
 <div class="callout info">
   <div class="callout-title">"Nenhuma cota atende a carga prevista"</div>
-  Significa que, com os parâmetros atuais, nenhuma profundidade de ponta atinge a carga prevista para aquela estaca. Reveja a carga prevista, o tipo/diâmetro da estaca ou as configurações de cálculo (Aba 5).
+  Significa que, com os parâmetros atuais, nenhuma profundidade de ponta atinge a carga prevista para aquela estaca. Reveja a carga prevista, o tipo/dimensão da estaca ou as configurações de cálculo (Aba 5).
 </div>
 
 <figure class="screenshot">
@@ -622,13 +635,13 @@ npm run preview</code></pre>
 <h4>Por que preciso de pelo menos 2 sondagens?</h4>
 <p>A compatibilização e o corte comparam furos entre si; com um único furo não há o que compatibilizar.</p>
 <h4>Aparece "nenhuma cota atende a carga prevista" numa estaca. O que é?</h4>
-<p>Com os parâmetros atuais, nenhuma profundidade de ponta atinge a carga prevista para aquela estaca. Reveja a carga, o tipo/diâmetro da estaca ou as configurações de cálculo.</p>
+<p>Com os parâmetros atuais, nenhuma profundidade de ponta atinge a carga prevista para aquela estaca. Reveja a carga, o tipo/dimensão da estaca ou as configurações de cálculo.</p>
 <h4>O cálculo substitui o projeto de fundações?</h4>
 <p>Não. É uma estimativa de apoio; o dimensionamento final é responsabilidade do engenheiro habilitado (NBR 6122).</p>
 <h4>O GeoSPT lê o PDF do laudo automaticamente?</h4>
 <p>Não. Ele fornece um protocolo padrão (<code>FORMATO_EXTRACAO_NSPT.md</code>, baixado pelo botão na tela inicial da Aba 2) para você extrair as sondagens com uma IA externa e <strong>conferir os valores antes de importar</strong>. O app não lê o PDF nem envia dados a servidores. Veja a <a href="#s5-2-1">seção 5.2.1</a>.</p>
-<h4>Por que não existe um alerta "A6"?</h4>
-<p>A numeração dos alertas pula o A6 por decisão de projeto. Os alertas válidos são A1–A5, A7, A8, A9 (com a variante A9_info) e A10.</p>
+<h4>O que é o alerta "A6"?</h4>
+<p>O A6 preencheu a antiga lacuna da numeração (até a v2.0.7 não existia). Ele avisa quando a dimensão da estaca — diâmetro da circular ou lado da quadrada — está fora da faixa usual de 15 a 120 cm. Diferente dos demais alertas (que analisam as sondagens), o A6 analisa a <strong>estaca</strong>: aparece no painel da Aba 4, no formulário e na listagem da Aba 5, e é registrado no JSON de auditoria (campos <code>alertaA6</code> e <code>geometriaSecao</code>, com A_p e U). É informativo: <strong>não impede</strong> a verificação da capacidade de carga.</p>
 <h4>Como abro este manual a partir do app?</h4>
 <p>Se a barra superior exibir o botão <code>&#x1F4D6; Manual</code>, ele abre este documento em uma aba separada do navegador. Caso não apareça, abra o arquivo HTML diretamente.</p>
 

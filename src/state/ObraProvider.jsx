@@ -13,6 +13,7 @@ import React, { createContext, useContext, useState } from 'react';
 import { GeoSPT } from '@/engine/geospt-engine';
 import { ESTADO_INICIAL, SCHEMA_VERSAO } from './estadoInicial';
 import { migrarDominios } from './dominiosHelper';
+import { normalizarEstacaFormato } from '@/domain/estacas';
 
 const ObraContext = createContext(null);
 
@@ -231,6 +232,13 @@ export function ObraProvider({ children }) {
     // obra.dominios[]. Se já houver dominios[] populado, mantém como está.
     obraMigrada.dominios = migrarDominios(obraMigrada);
 
+    // CP-14 — Migração de estacas: obras antigas só têm diametro_m.
+    // Normaliza para { formato: 'circular', dimensao_m = diametro_m },
+    // mantendo diametro_m espelhado (retrocompatibilidade total).
+    if (Array.isArray(obraMigrada.estacas)) {
+      obraMigrada.estacas = obraMigrada.estacas.map(normalizarEstacaFormato);
+    }
+
     // CP-13d — corteEsquematico: JSON pré-13d não tem o campo. Cria o default.
     if (!obraMigrada.corteEsquematico) {
       obraMigrada.corteEsquematico = {
@@ -263,10 +271,13 @@ export function ObraProvider({ children }) {
         premoldada: { base: 1, divisor: 0.80 },
         outros: { F1: 2.00, F2: 4.00 },
       };
-      const av_f1_f2_fn = function (tipoEstaca, diametro_m) {
+      const av_f1_f2_fn = function (tipoEstaca, diametro_m, B_m) {
         if (tipoEstaca === 'premoldada') {
           const p = params.premoldada;
-          const F1 = p.base + diametro_m / p.divisor;
+          // CP-14: dimensão transversal explícita (lado da quadrada) tem
+          // precedência; sem ela, deriva do diâmetro como sempre.
+          const dimTransversal = B_m != null ? B_m : diametro_m;
+          const F1 = p.base + dimTransversal / p.divisor;
           return { F1: F1, F2: 2 * F1 };
         }
         return { F1: params.outros.F1, F2: params.outros.F2 };

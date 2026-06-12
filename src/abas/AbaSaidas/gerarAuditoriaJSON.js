@@ -17,6 +17,7 @@ import {
   encontrarCotaSugeridaConservadora,
 } from '@/abas/AbaCapacidade/calculoHelpers';
 import { resolverFurosParaCalculo } from '@/state/dominiosHelper';
+import { avaliarAlertaA6, geometriaEstaca } from '@/domain/estacas';
 
 // Resultado de 1 modo "de perfil único" (envoltória / perfil médio):
 // calcula DQ+AV no perfil e extrai a cota sugerida canônica.
@@ -247,7 +248,19 @@ export function gerarAuditoriaJSON(obra, payloadObra) {
     return {
       nome: estaca.nome,
       tipoEstaca: estaca.tipoEstaca,
+      // CP-14 — formato da seção e dimensão livre; diametro_m mantido como
+      // espelho retrocompatível (= dimensao_m).
+      formato: estaca.formato === 'quadrada' ? 'quadrada' : 'circular',
+      dimensao_m: estaca.dimensao_m ?? estaca.diametro_m ?? null,
       diametro_m: estaca.diametro_m,
+      // CP-14f — geometria efetivamente usada no cálculo (Ap e U)
+      geometriaSecao: geometriaEstaca(
+        estaca.formato === 'quadrada' ? 'quadrada' : 'circular',
+        estaca.dimensao_m ?? estaca.diametro_m
+      ),
+      // Alerta A6 (dimensão fora da faixa usual 15–120 cm). Informativo:
+      // nunca bloqueia o cálculo de capacidade.
+      alertaA6: avaliarAlertaA6(estaca),
       cotaArrasamento_m: estaca.cotaArrasamento_m,
       cargaPrevista_tf: estaca.cargaPrevista_tf,
       cargaEstrutural_tf_custom: estaca.cargaEstrutural_tf_custom ?? null,

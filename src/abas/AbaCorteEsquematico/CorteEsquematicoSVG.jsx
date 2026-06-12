@@ -619,7 +619,12 @@ export default function CorteEsquematicoSVG({ itens, toggles }) {
       const infoLinhas = [];
       if (it.tipoEstaca) infoLinhas.push({ t: it.tipoEstaca });
       if (it.diametro_m != null)
-        infoLinhas.push({ t: 'Ø ' + Math.round(it.diametro_m * 100) + ' cm' });
+        infoLinhas.push({
+          t:
+            (it.formato === 'quadrada' ? '\u25A1 ' : '\u00D8 ') +
+            Math.round((it.dimensao_m ?? it.diametro_m) * 100) +
+            ' cm',
+        });
       if (temSolucao) {
         infoLinhas.push({ t: 'ponta ' + cotaPonta.toFixed(2) + ' m' });
         if (it.regente) infoLinhas.push({ t: it.regente + ' rege' });

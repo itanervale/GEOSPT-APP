@@ -328,7 +328,10 @@ export default function MiniMapaSVG({
           },
           e.tipoEstaca ? { rotulo: 'Tipo', valor: e.tipoEstaca } : null,
           e.diametro_m
-            ? { rotulo: 'Diâmetro', valor: `${Math.round(e.diametro_m * 100)} cm` }
+            ? {
+                rotulo: e.formato === 'quadrada' ? 'Lado' : 'Diâmetro',
+                valor: `${Math.round((e.dimensao_m ?? e.diametro_m) * 100)} cm`,
+              }
             : null,
           e.cotaArrasamento_m != null
             ? { rotulo: 'Cota arrasamento', valor: `${e.cotaArrasamento_m} m` }
@@ -659,7 +662,9 @@ export default function MiniMapaSVG({
             `X: ${e.coordenadas.x.toFixed(2)} m   Y: ${e.coordenadas.y.toFixed(2)} m`,
             e.tipoEstaca ? `Tipo: ${e.tipoEstaca}` : null,
             e.diametro_m
-              ? `Diâmetro: ${Math.round(e.diametro_m * 100)} cm`
+              ? `${e.formato === 'quadrada' ? 'Lado' : 'Diâmetro'}: ${Math.round(
+                  (e.dimensao_m ?? e.diametro_m) * 100
+                )} cm`
               : null,
             e.cotaArrasamento_m != null
               ? `Cota arrasamento: ${e.cotaArrasamento_m} m`
