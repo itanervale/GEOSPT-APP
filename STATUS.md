@@ -245,3 +245,25 @@ capturar pelo menos:
 - Manual e NOTAS_TECNICAS atualizados (A6 documentado).
 - Validação: 32,84 tf · casamento 45 · geometria 12 · build OK · 12 checks
   sintéticos CP-14 (geometria, F1, razão 4/π, override, limites A6).
+
+
+## CP-15 — Diagrama de transferência de carga estaca-solo (AOKI 1979)
+
+- Botão "📉 Transferência de carga" por método (DQ/AV) no resumo da Aba 6
+  (modo Envoltória); modal em tela cheia com 3 painéis em eixo de profundidade
+  comum: desenho da estaca, esforço normal N(z) e tensão axial σ(z)=N/Ap.
+- Engine INTOCADA — tudo derivado do memorial. 3 testes canônicos verdes +
+  nova suíte test-transferencia.mjs (33 asserções).
+- 3 cenários: Ruptura (R_rup), Carga prevista (a cadastrada), Prevista×FSg.
+  2 modelos de AOKI (A/B) nos cenários de trabalho; B≡A quando P≥PL.
+- Cota dupla (absoluta│relativa), valores metro a metro, identificação da
+  estaca em linha simples dentro do SVG, σ_topo sem corte, scroll para
+  estacas longas.
+- CP-15c/d: (a) carga estrutural comparada no MESMO estado-limite (admissível
+  no serviço; admissível×FSg no último/ruptura) — só referência, não altera o
+  traçado; (b) fuste acima das sondagens (E-04): N/σ constantes até o "topo do
+  solo" (corrige NaN na causa-raiz); (c) renderização defensiva contra valores
+  não-finitos.
+- Manual (5.6.1 + imagem 11), README, NOTAS_TECNICAS e HISTORICO atualizados.
+- Próximo (CP-16): tensões máximas admissíveis do material por norma no diagrama.
+- Validação: 32,84 tf · casamento 45 · geometria 12 · transferência 33 · build OK.

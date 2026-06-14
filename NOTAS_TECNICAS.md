@@ -1136,3 +1136,76 @@ Regressão 32,84 ✓, casamento 45 ✓, geometria 12 ✓, build ✓.
    Racional: A_p e U são constantes por estaca — exibir por linha do
    memorial seria ruído; o cabeçalho é o local canônico. Na Aba 6 a fonte é
    o memorial da engine (não recomputado), garantindo fidelidade ao cálculo.
+
+
+---
+
+## CP-15 — Diagrama de transferência de carga estaca-solo (AOKI 1979)
+
+### Escopo e blindagem
+Visualização nova, em modal de tela cheia, aberta por um botão em cada método
+(DQ e AV) no resumo da Aba 6 (modo Envoltória). ENGINE INTOCADA: tudo é derivado
+do memorial que a engine já produz. Os 216 testes da engine permanecem verdes sem
+alteração; 3 testes canônicos preservados (32,84 · 45 · 12) e nova suíte
+`test-transferencia.mjs` (33 asserções).
+
+Arquivos novos: `src/abas/AbaCapacidade/TransferenciaCarga/{transferenciaHelpers.js,
+DiagramaTransferenciaSVG.jsx, ModalTransferenciaCarga.jsx}` e `test-transferencia.mjs`.
+Edições: `CardResumoCalculo.jsx` (botão + modal por método) e `ConteudoPerfilUnico.jsx`
+(passa `params` para o FSg). Escopo só na Envoltória; componente recebe tudo por
+props (memorialLinha, estaca, metodo, FSg, naProf_m) para reuso futuro nos demais modos.
+
+### Teoria (AOKI 1979, doc. TQS) e fontes dos dados
+Definições por linha de memorial: PL = Ql_total_kN (atrito lateral último total — já
+EXCLUI a camada do "último metro desprezado"/bulbo; NUNCA somar camadasAtrito);
+PP = Rp_final_kN; PR = Rrup_kN = PL+PP (validado bit a bit); Ap = Ap_m2 (respeita
+formato circular/quadrada do CP-14). PL(z) = atrito acumulado do topo, interpolado
+linear no metro, usando só camadas com Ql válido.
+
+Três cenários de carga no topo (P):
+- RUPTURA: P = PR; N(z) = PR − PL(z); ponta = PP. Não usa Modelo A/B.
+- PREVISTA: P = carga prevista cadastrada na estaca (serviço).
+- PREVISTA×FS: P = carga prevista × FSg (estado-limite último).
+A carga dos cenários 2/3 é SEMPRE a prevista do usuário — nunca a Qadm calculada.
+Plotabilidade: cenário 2/3 só traça se P ≤ PR; sem carga prevista ou P>PR → aviso, sem gráfico.
+
+Dois modelos (cenários 2/3):
+- Modelo A: N(z) = max(P − PL(z), 0). Ponto B (P−PL(z)=0) quando P<PL; abaixo, N=0.
+- Modelo B: P≤PL → N(z) = P·(1 − PL(z)/PL); P>PL → N(z) = P − PL(z) (atrito saturado:
+  ponta recebe P−PL; nesse regime B≡A). DECISÃO validada com o usuário: a fórmula
+  proporcional pura só vale em P<PL (regime do documento); em P>PL a página 1 do
+  documento manda Pp=P−PL — manter a proporcional levaria a N_base=0, fisicamente
+  incorreto. B difere de A apenas em P<PL (Fig. 10.3).
+Ponta de trabalho (2/3): max(P−PL,0); ponta da ruptura: PP.
+Tensão: σ(z) = N(z)/Ap (MPa). Conversões tf↔kN pela constante CANÔNICA da engine
+(GeoSPT.util — KN_POR_TF=9,80665), não pelo /9,81 hardcoded da UI antiga.
+
+### CP-15c/d — correções pós-revisão visual
+1. CARGA ESTRUTURAL como referência por ESTADO-LIMITE (correção conceitual do
+   usuário): a carga estrutural da tabela é ADMISSÍVEL (com FS embutido). Comparar
+   ruptura ou carga última (sem/maior FS) com a admissível mistura estados-limite.
+   Regra final: cenário "Carga prevista" (serviço) compara P_prev vs C_adm; cenários
+   "Prevista×FS" e "Ruptura" (último) comparam vs C_adm × FSg (admissível elevada ao
+   último). C_adm nunca altera o traçado — só referência ao projetista.
+2. FUSTE ACIMA DAS SONDAGENS (causa-raiz do bug do NaN na E-04): quando o
+   arrasamento está acima do topo das sondagens (aterro, alerta A9), as camadas
+   superiores vêm com Ql_camada_kN indefinido. O `construirPLz` antigo somava-as
+   (ac += undefined → NaN), contaminando toda a série e apagando as curvas.
+   Correção: `cotaTopoSolo` = topo da 1ª camada com Ql finito; acima dela o atrito é
+   nulo e N(z)/σ(z) permanecem CONSTANTES = P (solução física indicada pelo usuário),
+   decaindo só a partir do topo do solo. PLz itera apenas camadas com Ql finito.
+   Linha "topo do solo" marcada no desenho. 3 testes novos travam a regressão.
+3. RENDERIZAÇÃO DEFENSIVA: a série descarta pontos com N/σ/cota não-finitos; se
+   sobrar <2 pontos, exibe aviso em vez de eixos quebrados — a tela nunca mais
+   mostra "NaN".
+4. UI: identificação da estaca em LINHA SIMPLES vertical, dentro do SVG, colada ao
+   desenho (E-01 · Hélice Contínua · Ø40cm · L=14m); cota DUPLA no eixo Y
+   (absoluta │ relativa); rótulos de N e σ em cada metro inteiro; σ_topo recua da
+   borda direita para não cortar; altura dinâmica (30px/m) → scroll no modal para
+   estacas longas (decisão do usuário: scroll, não densidade adaptativa).
+
+### Cabo solto deixado para o CP-16
+Tensões máximas admissíveis do material por norma (limite estrutural visível no
+diagrama de σ): no cenário "Ruptura" a σ_topo pode exceder qualquer fck usual
+(ex.: E-04 ~15,6 MPa) — é correto (mostra que a estrutural rege antes da ruptura
+geotécnica), mas falta a linha-limite normativa. Planejado para o CP-16.

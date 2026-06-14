@@ -190,6 +190,7 @@
   <a href="#s5-4"  class="l2">5.4 Aba 4 — Análise</a>
   <a href="#s5-5"  class="l2">5.5 Aba 5 — Estacas</a>
   <a href="#s5-6"  class="l2">5.6 Aba 6 — Capacidade</a>
+  <a href="#s5-6-1" class="l3">5.6.1 Transferência de carga</a>
   <a href="#s5-7"  class="l2">5.7 Aba 7 — Saídas</a>
   <a href="#s6"    class="l1">6. O Corte Esquemático</a>
   <a href="#s6-1"  class="l2">6.1 Montar a seleção</a>
@@ -206,7 +207,7 @@
 <section id="capa">
   <h1>Manual de Utilização — GeoSPT</h1>
   <p class="capa-sub">Análise de sondagens SPT e cálculo de capacidade de carga de estacas (Décourt-Quaresma e Aoki-Velloso)</p>
-  <p class="capa-meta">Aplicação: GeoSPT v2.0.7 &nbsp;|&nbsp; 7 abas &nbsp;·&nbsp; 4 modos de cálculo &nbsp;·&nbsp; corte esquemático interpretado<br>NBR 6122:2022 &nbsp;·&nbsp; Emissão deste manual: junho/2026</p>
+  <p class="capa-meta">Aplicação: GeoSPT v2.0.7 &nbsp;|&nbsp; 7 abas &nbsp;·&nbsp; 4 modos de cálculo &nbsp;·&nbsp; corte esquemático interpretado &nbsp;·&nbsp; diagrama de transferência de carga<br>NBR 6122:2022 &nbsp;·&nbsp; Emissão deste manual: junho/2026</p>
   <div class="capa-aviso">
     <strong>&#x26A0; Aviso técnico.</strong> O GeoSPT realiza estimativas <strong>semiempíricas</strong> de capacidade de carga. Os resultados são uma <strong>ferramenta de apoio</strong> e <strong>não substituem a análise nem a responsabilidade técnica do projetista</strong> (NBR 6122). Todo dimensionamento deve ser conferido por engenheiro habilitado.
   </div>
@@ -232,7 +233,7 @@
     <tr><td>3</td><td><strong>Compat.</strong> (Compatibilização)</td><td>Alinhamento dos furos por cota absoluta, gerando um perfil consolidado.</td></tr>
     <tr><td>4</td><td><strong>Análise</strong></td><td>Alertas críticos automáticos (A1–A10) e sugestão de agrupamento em domínios geotécnicos.</td></tr>
     <tr><td>5</td><td><strong>Estacas</strong></td><td>Cadastro das estacas e configurações globais de cálculo. Daqui se abre o Corte Esquemático.</td></tr>
-    <tr><td>6</td><td><strong>Capacidade</strong></td><td>Cálculo da capacidade de carga em 4 modos + comparativo.</td></tr>
+    <tr><td>6</td><td><strong>Capacidade</strong></td><td>Cálculo da capacidade de carga em 4 modos + comparativo. Inclui o diagrama de transferência de carga estaca-solo (AOKI 1979) por método.</td></tr>
     <tr><td>7</td><td><strong>Saídas</strong></td><td>Exportação dos resultados em XLSX, PDF e JSON.</td></tr>
   </tbody>
 </table>
@@ -547,6 +548,51 @@ npm run preview</code></pre>
   <figcaption>Aba 6 — Capacidade: resumo, detalhamento por camada e memorial de um modo.</figcaption>
 </figure>
 
+<h4 id="s5-6-1">5.6.1 Diagrama de transferência de carga estaca-solo</h4>
+<p>No resumo de cada método (Décourt-Quaresma e Aoki-Velloso) há o botão <strong>📉 Transferência de carga</strong>, que abre, em tela cheia, o diagrama de transferência axial de carregamento da estaca, com três painéis que compartilham o mesmo eixo de profundidade: o <strong>desenho da estaca</strong>, a curva de <strong>esforço normal N(z)</strong> (carga remanescente metro a metro) e a curva de <strong>tensão axial σ(z) = N(z)/A<sub>p</sub></strong>. Cada método abre o seu próprio diagrama, pois parte do diagrama de ruptura estaca-solo daquele método.</p>
+
+<p>O diagrama é traçado pelos modelos de <strong>AOKI (1979)</strong> e depende apenas do diagrama de ruptura (atrito lateral e ponta do método) e da carga aplicada no topo. O eixo vertical mostra a cota em <strong>dupla referência</strong>: absoluta (ex.: 253, 252…) e relativa (0, 1, 2… a partir do arrasamento).</p>
+
+<h5>Os três cenários de carga no topo</h5>
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>Cenário</th><th>Carga no topo (P)</th><th>Distribuição</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Ruptura geotécnica</strong></td><td>R<sub>rup</sub> = R<sub>l</sub> + R<sub>p</sub> do método</td><td>Pelos valores do método: N(z) = R<sub>rup</sub> − P<sub>L</sub>(z); ponta = R<sub>p</sub>. Não usa Modelo A/B.</td></tr>
+    <tr><td><strong>Carga prevista</strong></td><td>A carga prevista informada na estaca (carga de serviço)</td><td>Modelo A ou B; ponta de trabalho = máx(P − P<sub>L</sub>, 0).</td></tr>
+    <tr><td><strong>Prevista × FS</strong></td><td>Carga prevista × fator de segurança global (FS<sub>g</sub>)</td><td>Modelo A ou B; estado-limite último.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>A carga que alimenta os cenários 2 e 3 é <strong>sempre a carga prevista cadastrada</strong> na estaca — nunca a Q<sub>adm</sub> calculada. Se a carga prevista não estiver informada, ou se exceder a ruptura do método naquela cota, o cenário <strong>não é traçado</strong> e o app exibe um aviso explicando o motivo.</p>
+
+<h5>Os dois modelos de AOKI (cenários de carga de trabalho)</h5>
+<ul>
+  <li><strong>Modelo A</strong> — resistência local mobilizada: N(z) = máx(P − P<sub>L</sub>(z), 0). Quando P &lt; P<sub>L</sub>, há um <strong>ponto B</strong> (onde P − P<sub>L</sub>(z) = 0) abaixo do qual o atrito lateral é nulo e o esforço normal permanece zero até a ponta;</li>
+  <li><strong>Modelo B</strong> — redistribuição proporcional: N(z) = P·[1 − P<sub>L</sub>(z)/P<sub>L</sub>], um decaimento suave. Quando P ≥ P<sub>L</sub> (atrito lateral totalmente mobilizado), os dois modelos coincidem e a ponta recebe P − P<sub>L</sub>.</li>
+</ul>
+<p>A escolha entre A e B depende do tipo de solo e do método executivo, e só pode ser confirmada por prova de carga. O diagrama deixa os dois disponíveis, sem apresentar um como definitivo.</p>
+
+<div class="callout info">
+  <div class="callout-title">Estaca com arrasamento acima das sondagens (aterro)</div>
+  Quando a cota de arrasamento está acima do topo das sondagens (fuste em aterro, alerta A9), não há atrito mobilizável nesse trecho: o esforço normal e a tensão permanecem <strong>constantes</strong> do topo da estaca até a linha <strong>"topo do solo"</strong> marcada no desenho, e só então passam a decair. É o comportamento físico esperado, não um erro.
+</div>
+
+<div class="callout warn">
+  <div class="callout-title">Carga estrutural como referência</div>
+  A carga estrutural da estaca é uma <strong>carga admissível</strong> (já contém fator de segurança). Por isso, o aviso de capacidade estrutural compara grandezas no <strong>mesmo estado-limite</strong>: no cenário "Carga prevista" (serviço), compara-se a carga prevista com a estrutural admissível; nos cenários "Prevista × FS" e "Ruptura" (último), a referência exibida é a estrutural admissível <strong>multiplicada pelo FS<sub>g</sub></strong>. A carga estrutural nunca altera o traçado do diagrama — é apenas referência ao projetista.
+</div>
+
+<div class="callout">
+  <div class="callout-title">Diagrama simplificado</div>
+  O diagrama é uma estimativa pelo modelo de AOKI (1979), a partir do diagrama de ruptura estaca-solo do método — não substitui medições. Para verificação definitiva, recomenda-se prova de carga estática (NBR 16903) ou análise numérica com curvas de transferência (t-z).
+</div>
+
+<figure class="screenshot">
+  <img src="imagens-manual/11_transferencia-carga.png" alt="Diagrama de transferência de carga em tela cheia: desenho da estaca, curva de esforço normal N(z) e curva de tensão axial sigma(z), com cota dupla e valores metro a metro" onerror="imgFallback(this,'imagens-manual/11_transferencia-carga.png')">
+  <figcaption>Aba 6 — Diagrama de transferência de carga (AOKI, 1979): desenho da estaca, N(z) e σ(z) metro a metro.</figcaption>
+</figure>
+
 <!-- 5.7 SAÍDAS -->
 <h3 id="s5-7">5.7 Aba 7 — Saídas</h3>
 <p>Exportação dos resultados. O JSON serve para reabrir a obra no app; o XLSX para análises técnicas; o PDF/HTML para documento de entrega.</p>
@@ -660,6 +706,10 @@ npm run preview</code></pre>
     <tr><td><strong>Q<sub>adm</sub> / P_adm</strong></td><td>Carga admissível da estaca.</td></tr>
     <tr><td><strong>Domínio geotécnico</strong></td><td>Agrupamento de furos semelhantes, usado para filtrar cálculos por região do terreno.</td></tr>
     <tr><td><strong>Décourt-Quaresma / Aoki-Velloso</strong></td><td>Métodos semiempíricos de estimativa de capacidade de carga a partir do SPT.</td></tr>
+    <tr><td><strong>N(z)</strong></td><td>Esforço normal (carga remanescente) na estaca à profundidade z, no diagrama de transferência de carga.</td></tr>
+    <tr><td><strong>&sigma;(z)</strong></td><td>Tensão axial no material da estaca à profundidade z: N(z) dividido pela área da seção (A<sub>p</sub>).</td></tr>
+    <tr><td><strong>P<sub>L</sub> / P<sub>P</sub> / P<sub>R</sub></strong></td><td>No modelo de transferência: atrito lateral último total (P<sub>L</sub>), ponta última (P<sub>P</sub>) e ruptura (P<sub>R</sub> = P<sub>L</sub> + P<sub>P</sub>).</td></tr>
+    <tr><td><strong>Modelos A e B (AOKI 1979)</strong></td><td>Hipóteses de transferência de carga axial: A (resistência local mobilizada) e B (redistribuição proporcional). A escolha definitiva exige prova de carga.</td></tr>
   </tbody>
 </table>
 </div>

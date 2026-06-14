@@ -78,6 +78,7 @@ export default function ConteudoPerfilUnico({ resultado, estaca, params }) {
         av={calculos.av}
         estaca={estaca}
         descricaoModo={resultado.descricaoModo}
+        params={params}
       />
       <CurvaQxCotaSVG dq={calculos.dq} av={calculos.av} estaca={estaca} />
       <MemorialCalculo dq={calculos.dq} av={calculos.av} estaca={estaca} />

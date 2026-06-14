@@ -20,20 +20,28 @@
  *   - imports via @/ + calculoHelpers
  * ============================================================================ */
 
-import React from 'react';
+import React, { useState } from 'react';
 import Banner from '@/components/ui/Banner';
 import {
   classificarDivergencia,
   encontrarCotaSugeridaConservadora,
 } from './calculoHelpers';
+import ModalTransferenciaCarga from './TransferenciaCarga/ModalTransferenciaCarga';
+import { lerFSg } from './TransferenciaCarga/transferenciaHelpers';
 
 export default function CardResumoCalculo({
   dq,
   av,
   estaca,
   descricaoModo,
+  params,
+  naProf_m = null,
   compacto = false,
 }) {
+  // CP-15 — modal de transferência de carga (por método)
+  const [transf, setTransf] = useState(null); // null | { metodo, linha }
+  const FSg = lerFSg(params?.coeficientesCustomizados);
+
   const memDq = dq?.memorial || [];
   const memAv = av?.memorial || [];
 
@@ -164,6 +172,15 @@ export default function CardResumoCalculo({
               </span>
             </div>
           )}
+          {dqNaCota && (
+            <button
+              onClick={() => setTransf({ metodo: 'DQ', linha: dqNaCota })}
+              className="mt-1.5 text-[10px] px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white"
+              title="Diagrama de transferência de carga estaca-solo (AOKI 1979)"
+            >
+              📉 Transferência de carga
+            </button>
+          )}
         </div>
 
         {/* Coluna AV */}
@@ -198,6 +215,15 @@ export default function CardResumoCalculo({
                 {avNaMesmaCota.rege}
               </span>
             </div>
+          )}
+          {avNaMesmaCota && (
+            <button
+              onClick={() => setTransf({ metodo: 'AV', linha: avNaMesmaCota })}
+              className="mt-1.5 text-[10px] px-2 py-0.5 rounded bg-green-600 hover:bg-green-700 text-white"
+              title="Diagrama de transferência de carga estaca-solo (AOKI 1979)"
+            >
+              📉 Transferência de carga
+            </button>
           )}
         </div>
 
@@ -320,6 +346,18 @@ export default function CardResumoCalculo({
             </>
           )}
         </div>
+      )}
+
+      {/* CP-15 — Modal de transferência de carga (por método) */}
+      {transf && (
+        <ModalTransferenciaCarga
+          memorialLinha={transf.linha}
+          estaca={estaca}
+          metodo={transf.metodo}
+          FSg={FSg}
+          naProf_m={naProf_m}
+          onFechar={() => setTransf(null)}
+        />
       )}
     </div>
   );

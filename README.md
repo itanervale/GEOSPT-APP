@@ -41,7 +41,7 @@ O fluxo de trabalho segue a ordem das abas, mas você pode navegar livremente en
 | 3 | **Compatibilização** | Alinhamento dos furos por cota absoluta, gerando um perfil consolidado. |
 | 4 | **Análise** | Alertas críticos automáticos e sugestão de agrupamento em domínios geotécnicos. |
 | 5 | **Estacas** | Cadastro das estacas e configurações globais de cálculo. |
-| 6 | **Capacidade** | Cálculo da capacidade de carga em 4 modos + comparativo. |
+| 6 | **Capacidade** | Cálculo da capacidade de carga em 4 modos + comparativo, com diagrama de transferência de carga estaca-solo (AOKI 1979) por método. |
 | 7 | **Saídas** | Exportação dos resultados em XLSX, PDF e JSON. |
 
 O **Corte Esquemático** (perfil geológico interpretado) é acessível a partir da Aba 5.
@@ -177,6 +177,16 @@ Há ainda uma aba **Comparativo**, que coloca os modos lado a lado para análise
 
 Cada modo apresenta o resumo (Q_adm, carga prevista, margem com cor por sinal), o detalhamento por camada e o memorial de cálculo. Quando há divergência entre Décourt-Quaresma e Aoki-Velloso, ela é sinalizada.
 
+#### Diagrama de transferência de carga (AOKI 1979)
+
+No resumo de cada método há o botão **📉 Transferência de carga**, que abre em tela cheia o diagrama de transferência axial da estaca: desenho da estaca, curva de **esforço normal N(z)** e curva de **tensão axial σ(z) = N(z)/Aₚ**, com eixo de profundidade em cota dupla (absoluta e relativa) e valores metro a metro.
+
+- **Três cenários de carga no topo:** *Ruptura geotécnica* (R_rup do método), *Carga prevista* (a cadastrada na estaca) e *Prevista × FS* (carga prevista × fator de segurança global).
+- **Dois modelos de AOKI** nos cenários de trabalho: *Modelo A* (resistência local; trava em zero abaixo do ponto B quando P < P_L) e *Modelo B* (redistribuição proporcional). Quando P ≥ P_L os dois coincidem.
+- **Fuste em aterro:** se o arrasamento está acima das sondagens, N e σ permanecem constantes até o "topo do solo" e só então decaem.
+- **Carga estrutural** entra apenas como referência, comparada no mesmo estado-limite (admissível no cenário de serviço; admissível × FS nos cenários de estado-limite último). Nunca altera o traçado.
+- O diagrama é uma estimativa simplificada; não substitui prova de carga (NBR 16903) nem análise por curvas de transferência (t-z).
+
 ### Aba 7 — Saídas
 
 Exportação dos resultados.
@@ -273,6 +283,7 @@ A engine é validada por testes determinísticos em Node:
 node test-esm.mjs              # Regressão canônica (caso Balsas → 32,84 tf)
 node test-casamento.mjs        # Casamento de camadas do corte
 node test-geometria-corte.mjs  # Geometria do corte
+node test-transferencia.mjs    # Transferência de carga (AOKI 1979): N(z), σ(z), modelos A/B
 ```
 
 O **caso Balsas** é a regressão canônica: qualquer mudança que altere o resultado de **32,84 tf** indica quebra.
