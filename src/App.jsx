@@ -22,6 +22,7 @@
 
 import React from 'react';
 import EngineGuard from '@/components/EngineGuard';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { ObraProvider } from '@/state/ObraProvider';
 import Header from '@/layout/Header';
 import Tabs from '@/layout/Tabs';
@@ -38,7 +39,9 @@ export default function App() {
             <Tabs />
           </div>
           <main className="flex-1 overflow-auto">
-            <ConteudoAba />
+            <ErrorBoundary titulo="Erro ao exibir esta aba">
+              <ConteudoAba />
+            </ErrorBoundary>
           </main>
           <div className="shrink-0">
             <Disclaimer />

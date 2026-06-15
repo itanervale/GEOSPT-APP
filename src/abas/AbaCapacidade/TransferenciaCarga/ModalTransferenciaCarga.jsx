@@ -14,6 +14,7 @@
 
 import React, { useState, useMemo } from 'react';
 import DiagramaTransferenciaSVG from './DiagramaTransferenciaSVG';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import {
   construirPLz,
   montarCenario,
@@ -173,23 +174,25 @@ export default function ModalTransferenciaCarga({
       {/* Área central */}
       <div className="flex-1 overflow-auto p-4">
         {pacote?.ok ? (
-          <DiagramaTransferenciaSVG
-            info={info}
-            pacote={pacote}
-            estaca={estaca}
-            naProf_m={naProf_m}
-            metodo={metodo}
-            sigmaLimite_MPa={
-              sigmaE_MPa == null
-                ? null
-                : cenarioId === 'prevista'
-                  ? sigmaE_MPa
-                  : sigmaE_MPa * FSg
-            }
-            sigmaLimiteRotulo={
-              cenarioId === 'prevista' ? 'σ_e (norma)' : 'σ_e × FS'
-            }
-          />
+          <ErrorBoundary titulo="Erro ao desenhar o diagrama">
+            <DiagramaTransferenciaSVG
+              info={info}
+              pacote={pacote}
+              estaca={estaca}
+              naProf_m={naProf_m}
+              metodo={metodo}
+              sigmaLimite_MPa={
+                sigmaE_MPa == null
+                  ? null
+                  : cenarioId === 'prevista'
+                    ? sigmaE_MPa
+                    : sigmaE_MPa * FSg
+              }
+              sigmaLimiteRotulo={
+                cenarioId === 'prevista' ? 'σ_e (norma)' : 'σ_e × FS'
+              }
+            />
+          </ErrorBoundary>
         ) : (
           <div className="max-w-2xl mx-auto mt-8 bg-red-50 border border-red-300 rounded p-4">
             <div className="text-sm font-bold text-red-800 mb-1">Não é possível plotar este cenário</div>

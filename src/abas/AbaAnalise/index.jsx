@@ -3,7 +3,7 @@
  *
  * Áreas:
  *   1. Cabeçalho com contagem por severidade (críticos/moderados/info)
- *   2. Lista de alertas A1-A10 como cards
+ *   2. Lista de alertas A1-A11 como cards
  *   3. Card de sugestão de agrupamento de domínios (k-means simplificado)
  *
  * Cálculos derivados (useMemo):
@@ -136,7 +136,7 @@ export default function AbaAnalise() {
           4. Análise Crítica
         </h2>
         <p className="text-sm text-slate-600 mb-4">
-          Alertas A1–A10 sobre representatividade e qualidade das sondagens.
+          Alertas A1–A11 sobre representatividade e qualidade das sondagens.
         </p>
         <Banner tipo="alerta">
           {nSond < 2 ? (
@@ -156,7 +156,13 @@ export default function AbaAnalise() {
   }
 
   // Lista de alertas + contagem por severidade
-  const alertas = construirAlertas(compat, sondagens, estacas, aterroCorteInfo);
+  const alertas = construirAlertas(
+    compat,
+    sondagens,
+    estacas,
+    aterroCorteInfo,
+    estado.obra.parametros?.coeficientesCustomizados ?? null
+  );
   const cont = {
     critico: alertas.filter((a) => a.severidade === 'critico').length,
     moderado: alertas.filter((a) => a.severidade === 'moderado').length,

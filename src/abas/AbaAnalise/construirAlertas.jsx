@@ -28,9 +28,9 @@
  * ============================================================================ */
 
 import React from 'react';
-import { avaliarAlertaA6 } from '@/domain/estacas';
+import { avaliarAlertaA6, avaliarAlertaA11 } from '@/domain/estacas';
 
-export function construirAlertas(compat, sondagens, estacas, aterroCorteInfo) {
+export function construirAlertas(compat, sondagens, estacas, aterroCorteInfo, coeficientesCustomizados = null) {
   const alertas = [];
   const meta = compat.metadata;
 
@@ -179,6 +179,36 @@ export function construirAlertas(compat, sondagens, estacas, aterroCorteInfo) {
       ),
       implicacao:
         'Possível erro de digitação ou dimensão atípica. Verificar o valor na Aba 5. O alerta é informativo e NÃO impede a verificação da capacidade de carga.',
+    });
+  }
+
+  // ---------- A11 — Carga estrutural acima do valor de norma σₑ×A (CP-16) ----------
+  // Sobre ESTACA. Dispara quando a carga estrutural em uso (catálogo comercial ou
+  // valor informado) excede σₑ×A (Tabela 1.10). Também exibido na Aba 5 e gravado
+  // no JSON de auditoria. NÃO bloqueia o cálculo.
+  const estacasA11 = (estacas || [])
+    .map((e) => ({ e, a: avaliarAlertaA11(e, coeficientesCustomizados) }))
+    .filter((x) => x.a);
+  if (estacasA11.length > 0) {
+    alertas.push({
+      id: 'A11',
+      icone: 'ℹ',
+      severidade: 'info',
+      titulo: 'Carga estrutural acima do valor de norma (σₑ × A)',
+      descricao: (
+        <>
+          Estaca(s):{' '}
+          <strong className="font-mono">
+            {estacasA11.map((x) => x.e.nome).join(', ')}
+          </strong>
+          .{' '}
+          {estacasA11
+            .map((x) => `${x.e.nome}: ${x.a.mensagem.replace('A11 — ', '')}`)
+            .join(' ')}
+        </>
+      ),
+      implicacao:
+        'A carga estrutural em uso (catálogo comercial ou valor informado) supera o limite normativo σₑ×A. O cálculo usa o valor em uso, mas a norma admitiria menos. Verificar o dimensionamento estrutural. O alerta é informativo e NÃO impede a verificação da capacidade de carga.',
     });
   }
 
