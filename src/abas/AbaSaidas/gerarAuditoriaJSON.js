@@ -17,7 +17,7 @@ import {
   encontrarCotaSugeridaConservadora,
 } from '@/abas/AbaCapacidade/calculoHelpers';
 import { resolverFurosParaCalculo } from '@/state/dominiosHelper';
-import { avaliarAlertaA6, geometriaEstaca } from '@/domain/estacas';
+import { avaliarAlertaA6, avaliarAlertaA11, cargaEstruturalEfetiva, geometriaEstaca } from '@/domain/estacas';
 
 // Resultado de 1 modo "de perfil único" (envoltória / perfil médio):
 // calcula DQ+AV no perfil e extrai a cota sugerida canônica.
@@ -261,6 +261,19 @@ export function gerarAuditoriaJSON(obra, payloadObra) {
       // Alerta A6 (dimensão fora da faixa usual 15–120 cm). Informativo:
       // nunca bloqueia o cálculo de capacidade.
       alertaA6: avaliarAlertaA6(estaca),
+      // CP-16 — Alerta A11 (carga estrutural acima da norma σₑ×A) + hierarquia
+      // da carga estrutural admissível efetiva (override → catálogo → norma).
+      alertaA11: avaliarAlertaA11(estaca, params.coeficientesCustomizados),
+      cargaEstruturalAdmissivel: (() => {
+        const info = cargaEstruturalEfetiva(estaca, params.coeficientesCustomizados);
+        return {
+          valor_tf: info.valor,
+          origem: info.origem, // 'override' | 'catalogo' | 'norma' | null
+          catalogo_tf: info.catalogo,
+          norma_tf: info.norma,
+          sigma_e_MPa: info.sigma_MPa,
+        };
+      })(),
       cotaArrasamento_m: estaca.cotaArrasamento_m,
       cargaPrevista_tf: estaca.cargaPrevista_tf,
       cargaEstrutural_tf_custom: estaca.cargaEstrutural_tf_custom ?? null,

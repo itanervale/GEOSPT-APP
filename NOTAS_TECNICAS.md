@@ -1209,3 +1209,83 @@ Tensões máximas admissíveis do material por norma (limite estrutural visível
 diagrama de σ): no cenário "Ruptura" a σ_topo pode exceder qualquer fck usual
 (ex.: E-04 ~15,6 MPa) — é correto (mostra que a estrutural rege antes da ruptura
 geotécnica), mas falta a linha-limite normativa. Planejado para o CP-16.
+
+
+---
+
+## CP-16 — Tensão admissível estrutural (Tabela 1.10), carga estrutural por hierarquia e alerta A-11
+
+### Decisão de arquitetura (Opção A) e blindagem da engine
+A carga estrutural admissível passa a ser σₑ × A_seção (Tabela 1.10), substituindo a
+tabela por diâmetro do CP-14 como FONTE DE VERDADE. Motivos: (a) é o princípio físico
+que a tabela tabelada aproximava; (b) funciona para qualquer dimensão livre e para a
+estaca quadrada (resolve o "cabo solto" da chave equivalente do CP-14); (c) uma única
+fonte elimina divergência UI×memorial.
+
+Verificação que motivou a decisão: a razão carga_tabela_CP14 / (σₑ×A) NÃO é constante
+(hélice ~1,04; pré-moldada 0,63–0,77; raiz 0,98–1,27) — ou seja, a tabela do CP-14 e a
+Tabela 1.10 eram fontes INDEPENDENTES e inconsistentes entre si. Conciliá-las exigia
+eleger uma; elegeu-se σₑ×A.
+
+BLINDAGEM: a tabela antiga cargaEstrutural_tf permanece na engine como fallback morto
+(não removida) para não quebrar os 216 testes externos que a consultam. A engine ganha
+apenas 2 adições ADITIVAS: a tabela tensaoAdmissivel_MPa e util.cargaEstruturalNorma_tf.
+O caminho de cálculo Qadm_estrutural_tf NÃO foi tocado — a UI passa a sempre calcular a
+carga estrutural pela hierarquia e enviá-la via cargaEstrutural_tf_override (que já
+existia desde o CP-14). Regressão canônica 32,84 preservada (o caso Balsas é governado
+pela geotécnica, não pela estrutural).
+
+### Tabela 1.10 (σₑ, MPa) — editável
+helice_continua 6 · escavada_seco 5 · escavada_fluido 6 · premoldada 11 · raiz 12.
+Metálica 120 MPa fica para o CP-17 (estaca metálica ainda não existe no sistema).
+Editor: nova seção em EditorCoeficientesCompleto (id 'tensaoAdmissivel'), range 1–30 MPa,
+incluída no "restaurar seção aos padrões". Acessor tensaoAdmissivelDe(tipo, coefs) lê o
+override de coeficientesCustomizados ou o default da engine.
+
+### Hierarquia da carga estrutural admissível efetiva
+cargaEstruturalEfetiva(estaca, coefs) → { valor, origem, catalogo, norma, sigma_MPa }:
+  1. override do usuário (cargaEstrutural_tf_custom) — precedência absoluta;
+  2. catálogo comercial (catalogoCargaDe) se a dimensão é padronizada para o tipo;
+  3. cálculo σₑ×A (cargaNormaDe).
+O valor efetivo é o limite estrutural em TODOS os cálculos (propagado em calculoHelpers
+→ construirOpcoesCalculo → cargaEstrutural_tf_override). Quando a hierarquia não resolve
+(sem σₑ/catálogo/override), passa null e a engine usa a tabela antiga (fallback).
+
+### Catálogos comerciais (CATALOGO_CARGA_TF) — conversão kN→tf ÷10
+DECISÃO DELIBERADA do projetista: os valores das tabelas comerciais (em kN) são
+convertidos a tf DIVIDINDO POR 10, para resultarem em valores redondos comerciais
+(ex.: 900 kN → 90 tf). Esta conversão ÷10 vale EXCLUSIVAMENTE para os catálogos; todo o
+resto do app usa a constante canônica ÷9,80665. Inconsistência localizada e consciente.
+Fontes: hélice contínua (Ø27,5–100), escavada a seco / trado (Ø25–50), escavada com
+fluido / estação (Ø60–200), pré-moldada circular VIBRADA (Ø20/29/33), pré-moldada
+quadrada Tab 2.2 (L20–35), raiz com LIMITE SUPERIOR da faixa (Ø10–41). As tensões
+impressas nas imagens de catálogo foram IGNORADAS — usa-se só a Tabela 1.10 textual.
+
+### Alerta A-11 (avaliarAlertaA11)
+Dispara quando a carga estrutural EM USO (catálogo OU override) excede a carga de norma
+σₑ×A. Mensagem informa o valor de norma para todos os casos. Severidade 'aviso'; NÃO
+bloqueia o cálculo. Racional: o catálogo comercial costuma ser mais otimista que o
+limite normativo conservador; o app sinaliza a diferença em vez de escondê-la. σₑ×A é o
+piso normativo. Exibição: badge na linha da estaca (Aba 5), painel de avisos (Aba 5),
+bloco alertaA11 + cargaEstruturalAdmissivel no JSON de auditoria, badge no PDF.
+
+### Diagrama de transferência — linha-limite de tensão (16e)
+No painel σ(z): linha vertical tracejada vermelha em σ=σₑ (cenário "Carga prevista",
+serviço) ou σ=σₑ×FSg (cenários "Prevista×FS" e "Ruptura", estado-limite último). A curva
+σ(z) é desenhada em SEGMENTOS: trecho acima do limite em vermelho (com ponto de
+cruzamento interpolado exato), trecho abaixo na cor do método. Pontos e rótulos acima do
+limite em vermelho-negrito. A escala de σ inclui o limite para a linha sempre caber. Isso
+torna visível, por exemplo, que na E-04 (cenário ruptura) a tensão de topo excede o
+limite — confirmando que a estrutural rege antes da ruptura geotécnica.
+
+### Propagação nas saídas (16f)
+- XLSX (aba Estacas): colunas "Cap. estrutural adm. (tf)", "Origem cap. estrutural"
+  (informada/catálogo/norma) e "σe (MPa)".
+- PDF (identificação da estaca): capacidade estrutural com valor, origem e, se exceder,
+  nota A11 com o valor de norma.
+- Auditoria JSON: bloco cargaEstruturalAdmissivel { valor_tf, origem, catalogo_tf,
+  norma_tf, sigma_e_MPa } + alertaA11.
+
+### Cabo solto
+Nenhum específico do CP-16. O CP-17 trará a estaca metálica (σₑ=120 MPa já previsto na
+Tabela 1.10 conceitualmente, mas o tipo ainda não existe no cadastro nem na engine).

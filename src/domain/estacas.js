@@ -192,6 +192,134 @@ export function cargaEstruturalDe(tipoEstaca, dimensao_m, formato = 'circular') 
   return tabela[chave_cm]?.[tipoEstaca] ?? null;
 }
 
+/* ============================================================================
+ * CP-16 — Carga estrutural admissível: hierarquia e catálogos
+ *
+ * Fonte de verdade (Opção A): a carga estrutural admissível é σ_e × A_seção,
+ * onde σ_e vem da Tabela 1.10 (editável). Catálogos comerciais (abaixo) servem
+ * como SUGESTÃO para dimensões padronizadas. Hierarquia do valor efetivo:
+ *   1. override do usuário (cargaEstrutural_tf_custom) — precedência absoluta;
+ *   2. catálogo (se a dimensão é padronizada para o tipo);
+ *   3. cálculo σ_e × A (qualquer dimensão).
+ *
+ * IMPORTANTE: os valores de catálogo vêm de tabelas comerciais em kN e são
+ * convertidos a tf DIVIDINDO POR 10 (decisão do projetista, p/ valores redondos
+ * comerciais) — esta conversão ÷10 vale EXCLUSIVAMENTE aqui; todo o resto do app
+ * usa a constante canônica (÷9,80665).
+ * ========================================================================== */
+
+/**
+ * Catálogos comerciais por tipo: { dimensao_cm: carga_tf }.
+ * Valores = (kN das tabelas de catálogo) ÷ 10. Raiz usa o LIMITE SUPERIOR da
+ * faixa. Pré-moldada circular usa a estaca VIBRADA. Quadrada tem catálogo
+ * próprio (Tab. 2.2, por lado em cm).
+ */
+export const CATALOGO_CARGA_TF = {
+  helice_continua: {
+    27.5: 35, 30: 45, 35: 60, 40: 80, 42.5: 90, 50: 125,
+    60: 180, 70: 245, 80: 320, 90: 400, 100: 500,
+  },
+  escavada_seco: { 25: 25, 30: 36, 35: 49, 40: 64, 45: 81, 50: 100 },
+  escavada_fluido: {
+    60: 110, 70: 150, 80: 200, 100: 310, 120: 450, 140: 620,
+    150: 710, 160: 820, 180: 1010, 200: 1250,
+  },
+  // Pré-moldada CIRCULAR (vibrada): Ø em cm
+  premoldada_circular: { 20: 40, 29: 60, 33: 80 },
+  // Pré-moldada QUADRADA (Tab. 2.2): lado em cm
+  premoldada_quadrada: { 20: 40, 25: 60, 30: 90, 35: 120 },
+  // Raiz: limite SUPERIOR da faixa (kN) ÷ 10
+  raiz: {
+    10: 15, 12: 25, 15: 35, 16: 45, 20: 60, 25: 80, 31: 110, 41: 150,
+  },
+};
+
+/** Tensão admissível σ_e (MPa) da Tabela 1.10, com override de coeficientes. */
+export function tensaoAdmissivelDe(tipoEstaca, coeficientesCustomizados) {
+  const custom = coeficientesCustomizados?.tensaoAdmissivel_MPa?.[tipoEstaca];
+  if (custom != null && custom > 0) return custom;
+  return GeoSPT?.domain?.coefficients?.tensaoAdmissivel_MPa?.[tipoEstaca] ?? null;
+}
+
+/** Chave de catálogo conforme tipo e formato (pré-moldada distingue circular/quadrada). */
+function chaveCatalogo(tipoEstaca, formato) {
+  if (tipoEstaca === 'premoldada') {
+    return formato === 'quadrada' ? 'premoldada_quadrada' : 'premoldada_circular';
+  }
+  return tipoEstaca;
+}
+
+/**
+ * Valor de catálogo (tf) para a dimensão dada, se houver entrada padronizada.
+ * @returns {number|null}
+ */
+export function catalogoCargaDe(tipoEstaca, dimensao_m, formato = 'circular') {
+  if (!tipoEstaca || dimensao_m == null) return null;
+  const cat = CATALOGO_CARGA_TF[chaveCatalogo(tipoEstaca, formato)];
+  if (!cat) return null;
+  const cm = Math.round(dimensao_m * 1000) / 10; // cm com 1 casa (ex.: 42.5)
+  // match exato (após arredondar a 1 casa) — catálogo é por dimensão padronizada
+  return cat[cm] ?? cat[Math.round(cm)] ?? null;
+}
+
+/** Carga estrutural de NORMA (tf) = σ_e × A, usando a Tabela 1.10. */
+export function cargaNormaDe(tipoEstaca, dimensao_m, formato, coeficientesCustomizados) {
+  const sigma = tensaoAdmissivelDe(tipoEstaca, coeficientesCustomizados);
+  const geo = geometriaEstaca(formato, dimensao_m);
+  if (sigma == null || !geo) return null;
+  return GeoSPT.util.cargaEstruturalNorma_tf(sigma, geo.area_ponta_m2);
+}
+
+/**
+ * Carga estrutural admissível EFETIVA (tf), pela hierarquia do CP-16.
+ * @returns {{ valor:number|null, origem:'override'|'catalogo'|'norma'|null,
+ *             catalogo:number|null, norma:number|null, sigma_MPa:number|null }}
+ */
+export function cargaEstruturalEfetiva(estaca, coeficientesCustomizados) {
+  const tipo = estaca?.tipoEstaca;
+  const dim = dimensaoDe(estaca);
+  const formato = formatoDe(estaca);
+  const sigma = tensaoAdmissivelDe(tipo, coeficientesCustomizados);
+  const catalogo = catalogoCargaDe(tipo, dim, formato);
+  const norma = cargaNormaDe(tipo, dim, formato, coeficientesCustomizados);
+  const override = estaca?.cargaEstrutural_tf_custom;
+
+  let valor, origem;
+  if (override != null && override > 0) {
+    valor = override; origem = 'override';
+  } else if (catalogo != null) {
+    valor = catalogo; origem = 'catalogo';
+  } else if (norma != null) {
+    valor = norma; origem = 'norma';
+  } else {
+    valor = null; origem = null;
+  }
+  return { valor, origem, catalogo, norma, sigma_MPa: sigma };
+}
+
+/* ----------------------------------------------------------------------------
+ * Alerta A-11 — carga estrutural em uso acima do valor de norma (σ_e × A).
+ * Dispara quando a carga efetiva (catálogo ou override) excede a carga de norma.
+ * Informa o valor que seria o de norma. Não bloqueia o cálculo.
+ * -------------------------------------------------------------------------- */
+export function avaliarAlertaA11(estaca, coeficientesCustomizados) {
+  const { valor, origem, norma } = cargaEstruturalEfetiva(estaca, coeficientesCustomizados);
+  if (valor == null || norma == null) return null;
+  if (valor > norma + 1e-6) {
+    const origemTxt = origem === 'override' ? 'informada' : 'de catálogo';
+    return {
+      id: 'A11',
+      severidade: 'aviso',
+      estaca: estaca?.nome || '',
+      mensagem:
+        `A11 — carga estrutural ${origemTxt} (${valor.toFixed(1)} tf) é maior que o ` +
+        `valor de norma σ_e×A (${norma.toFixed(1)} tf). O cálculo usa o valor ${origemTxt}, ` +
+        'mas a norma admitiria menos. Verifique o dimensionamento estrutural. O cálculo NÃO é bloqueado.',
+    };
+  }
+  return null;
+}
+
 /**
  * Label legível do tipo de estaca, dado o id.
  */

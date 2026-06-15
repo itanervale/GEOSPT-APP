@@ -33,7 +33,10 @@ import { GeoSPT } from '@/engine/geospt-engine';
 import {
   TIPOS_ESTACA,
   FORMATOS_ESTACA,
-  cargaEstruturalDe,
+  cargaEstruturalEfetiva,
+  catalogoCargaDe,
+  cargaNormaDe,
+  tensaoAdmissivelDe,
   formatoDe,
   dimensaoDe,
   labelDimensao,
@@ -52,6 +55,7 @@ export default function ModalEditarEstaca({
   isNovo,
   sondagens,
   dominios = [],
+  coeficientesCustomizados = null,
   onSalvar,
   onCancelar,
 }) {
@@ -70,7 +74,13 @@ export default function ModalEditarEstaca({
   const formato = formatoDe(d);
   const dimensao_m = dimensaoDe(d);
   const dimensaoCm = dimensao_m != null ? Math.round(dimensao_m * 1000) / 10 : null;
-  const cargaEstr = cargaEstruturalDe(d.tipoEstaca, dimensao_m, formato);
+  const cargaEstrInfo = cargaEstruturalEfetiva(
+    { ...d, formato, dimensao_m },
+    coeficientesCustomizados
+  );
+  const cargaCatalogo = cargaEstrInfo.catalogo;
+  const cargaNorma = cargaEstrInfo.norma;
+  const sigmaE = cargaEstrInfo.sigma_MPa;
   const alertaA6 = avaliarAlertaA6({ ...d, formato, dimensao_m });
 
   const setDimensao = (valorCm) => {
@@ -263,31 +273,32 @@ export default function ModalEditarEstaca({
                   ⚠ {alertaA6.mensagem}
                 </div>
               )}
-              {cargaEstr !== null ? (
-                <div className="text-xs text-slate-600 mt-0.5">
-                  Carga estrutural (tabela):{' '}
-                  <strong>{cargaEstr} tf</strong>
-                  {formato === 'quadrada' && (
-                    <span className="block text-blue-700">
-                      Valor da tabela para seção circular de Ø equivalente —
-                      conservador para a quadrada. Informe abaixo o valor do
-                      fabricante para refinar.
-                    </span>
+              {/* CP-16 — referências de carga estrutural (catálogo e norma σₑ×A) */}
+              {dimensao_m != null && (sigmaE != null || cargaCatalogo != null) && (
+                <div className="text-xs text-slate-600 mt-0.5 space-y-0.5">
+                  {sigmaE != null && cargaNorma != null && (
+                    <div>
+                      Norma (σ<sub>e</sub> = {sigmaE} MPa × A):{' '}
+                      <strong>{cargaNorma.toFixed(1)} tf</strong>
+                    </div>
+                  )}
+                  {cargaCatalogo != null && (
+                    <div>
+                      Catálogo comercial:{' '}
+                      <strong>{cargaCatalogo} tf</strong>
+                      {cargaNorma != null && cargaCatalogo > cargaNorma + 0.05 && (
+                        <span className="text-amber-700">
+                          {' '}— acima da norma ({cargaNorma.toFixed(1)} tf); ver alerta A11.
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
-              ) : (
-                dimensao_m != null && (
-                  <div className="text-xs text-blue-700 mt-0.5">
-                    Dimensão sem entrada na tabela de carga estrutural — sem
-                    limite estrutural automático. Informe abaixo, se aplicável
-                    (fabricante/projeto).
-                  </div>
-                )
               )}
             </div>
           </div>
 
-          {/* Carga estrutural editável (override) */}
+          {/* Carga estrutural admissível — hierarquia CP-16 (override → catálogo → norma) */}
           <div>
             <label className="block text-xs text-slate-600 mb-0.5">
               Capacidade estrutural admissível (tf)
@@ -305,41 +316,69 @@ export default function ModalEditarEstaca({
               }
               className={inputCls + ' w-full font-mono'}
               placeholder={
-                cargaEstr !== null
-                  ? `tabela: ${cargaEstr} tf (deixe vazio para usar)`
-                  : 'sem valor de tabela para este tipo/dimensão'
+                cargaEstrInfo.valor != null
+                  ? `vazio → ${cargaEstrInfo.valor.toFixed(1)} tf (${
+                      cargaEstrInfo.origem === 'catalogo' ? 'catálogo' : 'norma'
+                    })`
+                  : 'informe a carga estrutural admissível'
               }
             />
+            {/* Botões de sugestão (clicáveis) — catálogo e/ou norma */}
+            {(cargaCatalogo != null || cargaNorma != null) && (
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {cargaCatalogo != null && (
+                  <button
+                    type="button"
+                    onClick={() => setCampo('cargaEstrutural_tf_custom', cargaCatalogo)}
+                    className="text-[11px] px-2 py-0.5 rounded border border-blue-300 text-blue-700 hover:bg-blue-50"
+                  >
+                    usar catálogo: {cargaCatalogo} tf
+                  </button>
+                )}
+                {cargaNorma != null && (
+                  <button
+                    type="button"
+                    onClick={() => setCampo('cargaEstrutural_tf_custom', Math.round(cargaNorma * 10) / 10)}
+                    className="text-[11px] px-2 py-0.5 rounded border border-slate-300 text-slate-700 hover:bg-slate-50"
+                  >
+                    usar norma: {cargaNorma.toFixed(1)} tf
+                  </button>
+                )}
+              </div>
+            )}
             {(() => {
               const override = d.cargaEstrutural_tf_custom;
               if (override == null || override === '') {
-                return (
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    Vazio → usa o valor da tabela
-                    {cargaEstr !== null ? ` (${cargaEstr} tf)` : ''}.
-                  </div>
-                );
-              }
-              if (cargaEstr !== null && cargaEstr > 0) {
-                const div = Math.abs(override - cargaEstr) / cargaEstr;
-                if (div > 0.3) {
+                // Sem override → mostra o que a hierarquia usará
+                if (cargaEstrInfo.valor == null) {
                   return (
-                    <div className="text-xs text-amber-700 bg-amber-50 border-l-2 border-amber-400 px-1.5 py-1 mt-0.5">
-                      ⚠ Valor diverge {(div * 100).toFixed(0)}% da tabela (
-                      {cargaEstr} tf). Confirme se o dimensionamento estrutural
-                      da estaca justifica este valor.
+                    <div className="text-xs text-blue-700 mt-0.5">
+                      Sem catálogo nem σ<sub>e</sub> para este tipo/dimensão — informe o valor.
                     </div>
                   );
                 }
                 return (
-                  <div className="text-xs text-green-700 mt-0.5">
-                    ✓ Override de {override} tf (tabela: {cargaEstr} tf).
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Vazio → o cálculo usa{' '}
+                    <strong>{cargaEstrInfo.valor.toFixed(1)} tf</strong>{' '}
+                    ({cargaEstrInfo.origem === 'catalogo' ? 'catálogo comercial' : 'norma σₑ×A'}).
+                  </div>
+                );
+              }
+              // Com override → A-11 se exceder a norma
+              if (cargaNorma != null && override > cargaNorma + 0.05) {
+                return (
+                  <div className="text-xs text-amber-700 bg-amber-50 border-l-2 border-amber-400 px-1.5 py-1 mt-0.5">
+                    ⚠ A11 — valor informado ({override} tf) acima da norma σ<sub>e</sub>×A (
+                    {cargaNorma.toFixed(1)} tf). O cálculo usa o valor informado; a norma
+                    admitiria menos. Verifique o dimensionamento estrutural.
                   </div>
                 );
               }
               return (
-                <div className="text-xs text-blue-700 mt-0.5">
-                  Override de {override} tf (sem valor de tabela para comparar).
+                <div className="text-xs text-green-700 mt-0.5">
+                  ✓ Valor informado: {override} tf
+                  {cargaNorma != null ? ` (norma: ${cargaNorma.toFixed(1)} tf)` : ''}.
                 </div>
               );
             })()}

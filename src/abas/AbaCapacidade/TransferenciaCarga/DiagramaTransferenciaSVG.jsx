@@ -45,6 +45,8 @@ export default function DiagramaTransferenciaSVG({
   estaca,
   naProf_m = null,
   metodo = 'DQ',
+  sigmaLimite_MPa = null,
+  sigmaLimiteRotulo = 'σ_e',
 }) {
   if (!info || !pacote || !pacote.ok || !pacote.serie || pacote.serie.length === 0) {
     return null;
@@ -105,7 +107,14 @@ export default function DiagramaTransferenciaSVG({
   }
 
   const Nmax = Math.max(...serie.map((p) => p.N_kN), 1);
-  const sigMax = Math.max(...serie.map((p) => p.sigma_MPa), 0.001);
+  const finitoLimite = typeof sigmaLimite_MPa === 'number' && Number.isFinite(sigmaLimite_MPa) && sigmaLimite_MPa > 0;
+  // A escala de σ inclui o limite, para a linha-limite caber mesmo quando a curva
+  // não o atinge (ou quando o ultrapassa muito).
+  const sigMax = Math.max(
+    ...serie.map((p) => p.sigma_MPa),
+    finitoLimite ? sigmaLimite_MPa : 0,
+    0.001
+  );
   const xDeN = (N) => x0N + (N / Nmax) * COL_N;
   const xDeSigma = (s) => x0Sigma + (s / sigMax) * COL_SIGMA;
 
@@ -113,6 +122,41 @@ export default function DiagramaTransferenciaSVG({
     pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xFn(p[vKey]).toFixed(1)} ${yDeCota(p.cota).toFixed(1)}`).join(' ');
   const pathN = pathDe(serie, (v) => xDeN(v), 'N_kN');
   const pathSigma = pathDe(serie, (v) => xDeSigma(v), 'sigma_MPa');
+
+  // CP-16 — segmentos da curva σ: vermelho onde σ(z) > limite, normal abaixo.
+  // Constrói sub-paths consecutivos por faixa, inserindo o ponto de cruzamento
+  // exato com a linha-limite para a transição de cor não "pular".
+  const COR_EXCEDE = '#dc2626';
+  const segmentosSigma = (() => {
+    if (!finitoLimite) return [{ acima: false, d: pathSigma }];
+    const segs = [];
+    let atual = null;
+    const yInterp = (a, b) => {
+      // cota onde σ cruza o limite, interpolando linearmente entre a e b
+      const t = (sigmaLimite_MPa - a.sigma_MPa) / (b.sigma_MPa - a.sigma_MPa);
+      return a.cota + t * (b.cota - a.cota);
+    };
+    const ptStr = (cota, sigma) => `${xDeSigma(sigma).toFixed(1)} ${yDeCota(cota).toFixed(1)}`;
+    for (let i = 0; i < serie.length; i++) {
+      const p = serie[i];
+      const acima = p.sigma_MPa > sigmaLimite_MPa + 1e-9;
+      if (atual == null) {
+        atual = { acima, pts: [ptStr(p.cota, p.sigma_MPa)] };
+      } else if (acima === atual.acima) {
+        atual.pts.push(ptStr(p.cota, p.sigma_MPa));
+      } else {
+        // cruzou o limite entre o ponto anterior e este → ponto de cruzamento
+        const ant = serie[i - 1];
+        const cotaCruz = yInterp(ant, p);
+        const cruzStr = ptStr(cotaCruz, sigmaLimite_MPa);
+        atual.pts.push(cruzStr);
+        segs.push({ acima: atual.acima, d: 'M ' + atual.pts.join(' L ') });
+        atual = { acima, pts: [cruzStr, ptStr(p.cota, p.sigma_MPa)] };
+      }
+    }
+    if (atual) segs.push({ acima: atual.acima, d: 'M ' + atual.pts.join(' L ') });
+    return segs;
+  })();
   const areaN =
     `M ${x0N} ${yDeCota(serie[0].cota).toFixed(1)} ` +
     serie.map((p) => `L ${xDeN(p.N_kN).toFixed(1)} ${yDeCota(p.cota).toFixed(1)}`).join(' ') +
@@ -227,14 +271,52 @@ export default function DiagramaTransferenciaSVG({
       {/* ===== PAINEL 3 — σ(z) ===== */}
       <g>
         <line x1={x0Sigma} y1={yTop} x2={x0Sigma} y2={yBot} stroke="#cbd5e1" strokeWidth="1" />
-        <path d={pathSigma} fill="none" stroke={cor.forte} strokeWidth="2" strokeDasharray="5 3" />
+
+        {/* Linha-limite vertical (σ_e no serviço; σ_e×FS no estado-limite último) */}
+        {finitoLimite && (
+          <g>
+            <line
+              x1={xDeSigma(sigmaLimite_MPa)}
+              y1={yTop - 16}
+              x2={xDeSigma(sigmaLimite_MPa)}
+              y2={yBot}
+              stroke={COR_EXCEDE}
+              strokeWidth="1.5"
+              strokeDasharray="4 3"
+            />
+            <text
+              x={xDeSigma(sigmaLimite_MPa)}
+              y={yTop - 20}
+              textAnchor="middle"
+              fontSize="8.5"
+              fontWeight="bold"
+              fill={COR_EXCEDE}
+            >
+              {sigmaLimiteRotulo} = {sigmaLimite_MPa.toFixed(1)}
+            </text>
+          </g>
+        )}
+
+        {/* Curva σ(z) em segmentos: vermelho onde excede o limite */}
+        {segmentosSigma.map((seg, i) => (
+          <path
+            key={i}
+            d={seg.d}
+            fill="none"
+            stroke={seg.acima ? COR_EXCEDE : cor.forte}
+            strokeWidth={seg.acima ? 2.5 : 2}
+            strokeDasharray="5 3"
+          />
+        ))}
+
         {cotasInteiras.map((c) => {
           const p = valorNaCota(c);
           if (!p) return null;
+          const excede = finitoLimite && p.sigma_MPa > sigmaLimite_MPa + 1e-9;
           return (
             <g key={c}>
-              <circle cx={xDeSigma(p.sigma_MPa)} cy={yDeCota(c)} r="2.4" fill={cor.forte} />
-              <text x={xDeSigma(p.sigma_MPa) + 5} y={yDeCota(c) + 3} fontSize="8.5" fill="#334155">{p.sigma_MPa.toFixed(2)}</text>
+              <circle cx={xDeSigma(p.sigma_MPa)} cy={yDeCota(c)} r="2.4" fill={excede ? COR_EXCEDE : cor.forte} />
+              <text x={xDeSigma(p.sigma_MPa) + 5} y={yDeCota(c) + 3} fontSize="8.5" fontWeight={excede ? 'bold' : 'normal'} fill={excede ? COR_EXCEDE : '#334155'}>{p.sigma_MPa.toFixed(2)}</text>
             </g>
           );
         })}

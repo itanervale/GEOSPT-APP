@@ -154,6 +154,17 @@
         70: { helice_continua: 245, escavada_seco: 173, escavada_fluido: 150, premoldada: 300, raiz: null },
         80: { helice_continua: 320, escavada_seco: 226, escavada_fluido: 200, premoldada: 400, raiz: null },
         100:{ helice_continua: 500, escavada_seco: 354, escavada_fluido: 310, premoldada: null,raiz: null }
+      },
+
+      // Tabela 1.10 — Tensão admissível estrutural σ_e (MPa) por tipo de estaca.
+      // Base do CP-16: a carga estrutural admissível passa a ser σ_e × A_seção.
+      // Editável na UI. (Metálica: 120 MPa — CP-17, ainda não no sistema.)
+      tensaoAdmissivel_MPa: {
+        helice_continua: 6,
+        escavada_seco:   5,
+        escavada_fluido: 6,
+        premoldada:      11,
+        raiz:            12
       }
     },
 
@@ -194,6 +205,18 @@
 
     /** Converte tf para kN */
     tfParaKn: function (v_tf) { return v_tf * domain.constants.KN_POR_TF; },
+
+    /**
+     * Carga estrutural admissível de NORMA (tf) = σ_e (MPa) × A (m²).
+     * σ_e em MPa = MN/m²; A em m² → MN; convertido a tf por KN_POR_TF.
+     * Retorna null se faltar dado. Usada pela UI (CP-16) para a hierarquia
+     * override → catálogo → cálculo, sem alterar o caminho da engine.
+     */
+    cargaEstruturalNorma_tf: function (sigma_e_MPa, area_m2) {
+      if (sigma_e_MPa == null || area_m2 == null || !(area_m2 > 0)) return null;
+      const MN = sigma_e_MPa * area_m2;
+      return (MN * 1000) / domain.constants.KN_POR_TF;
+    },
 
     /** Arredonda para baixo (Math.floor) — usado em NSPT médio */
     arredondaBaixo: function (v) { return Math.floor(v); },

@@ -53,6 +53,7 @@ const RANGE_REDUCAO_P = [0.3, 1.0];
 const RANGE_FS_FL = [1.0, 3.0];
 const RANGE_FS_FP = [2.0, 6.0];
 const RANGE_FS_FSG = [1.5, 3.0];
+const RANGE_SIGMA_E = [1.0, 30.0]; // MPa — σ_e admissível (CP-16)
 
 // Famílias DQ (ordem importa — segue tabelas Décourt-Quaresma)
 const FAMILIAS_DQ = ['Coesivo', 'Intermediário', 'Granular'];
@@ -100,6 +101,7 @@ export default function EditorCoeficientesCompleto({ config, setConfigGlobal }) 
         premoldada: { base: 1, divisor: 0.8 },
         outros: { F1: 2.0, F2: 4.0 },
       },
+      tensaoAdmissivel_MPa: { ...c.tensaoAdmissivel_MPa },
     };
   }, []);
 
@@ -137,6 +139,9 @@ export default function EditorCoeficientesCompleto({ config, setConfigGlobal }) 
       return p?.outros?.F2 ?? defaultsEngine.AV_F1_F2_params.outros.F2;
   };
 
+  const valSigmaE = (tipo) =>
+    custom?.tensaoAdmissivel_MPa?.[tipo] ?? defaultsEngine.tensaoAdmissivel_MPa[tipo];
+
   // Reconstrói AV_F1_F2_fn a partir dos params (única função armazenada)
   const construirF1F2fn = (params) => {
     return function (tipoEstaca, diametro_m) {
@@ -165,6 +170,7 @@ export default function EditorCoeficientesCompleto({ config, setConfigGlobal }) 
         premoldada: { base: 1, divisor: 0.8 },
         outros: { F1: 2.0, F2: 4.0 },
       },
+      tensaoAdmissivel_MPa: { ...orig.tensaoAdmissivel_MPa },
       // AV_F1_F2_fn herda do orig via spread acima
     };
   };
@@ -182,6 +188,13 @@ export default function EditorCoeficientesCompleto({ config, setConfigGlobal }) 
     setConfigGlobal('coeficientesCustomizados', {
       ...novo,
       DQ_FS: { ...novo.DQ_FS, [campo]: valor },
+    });
+  };
+  const setSigmaE = (tipo, valor) => {
+    const novo = garantirCoefs();
+    setConfigGlobal('coeficientesCustomizados', {
+      ...novo,
+      tensaoAdmissivel_MPa: { ...novo.tensaoAdmissivel_MPa, [tipo]: valor },
     });
   };
   const setDQ_C = (solo, valor) => {
@@ -250,6 +263,8 @@ export default function EditorCoeficientesCompleto({ config, setConfigGlobal }) 
     let atualizado;
     if (tabela === 'reducaoP')
       atualizado = { ...novo, reducaoP: { ...orig.reducaoP } };
+    else if (tabela === 'tensaoAdmissivel')
+      atualizado = { ...novo, tensaoAdmissivel_MPa: { ...orig.tensaoAdmissivel_MPa } };
     if (tabela === 'DQ_FS') atualizado = { ...novo, DQ_FS: { ...orig.DQ_FS } };
     if (tabela === 'DQ_C') atualizado = { ...novo, DQ_C: { ...orig.DQ_C } };
     if (tabela === 'DQ_alpha')
@@ -865,6 +880,55 @@ export default function EditorCoeficientesCompleto({ config, setConfigGlobal }) 
                   ))}
                 </tbody>
               </table>
+            )}
+          </div>
+
+          {/* === Tabela 1.10 — Tensão admissível estrutural σₑ (CP-16) === */}
+          <div className="bg-white border border-slate-200 rounded p-2">
+            <SecaoColunela
+              id="tensaoAdmissivel"
+              titulo="Tabela 1.10 — Tensão admissível estrutural σₑ"
+              subtitulo="(MPa; carga estrutural admissível = σₑ × área da seção)"
+              tabela="tensaoAdmissivel"
+            />
+            {secaoAberta === 'tensaoAdmissivel' && (
+              <>
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 text-slate-600">
+                    <tr>
+                      <th className="px-1.5 py-1 text-left">Tipo</th>
+                      <th className="px-1.5 py-1 text-right">Padrão (MPa)</th>
+                      <th className="px-1.5 py-1 text-right">σₑ em uso (MPa)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TIPOS_ESTACA.filter(
+                      (t) => defaultsEngine.tensaoAdmissivel_MPa[t.id] != null
+                    ).map((t) => (
+                      <tr key={t.id} className="border-t border-slate-100">
+                        <td className="px-1.5 py-1">{t.label}</td>
+                        <td className="px-1.5 py-1 text-right font-mono text-slate-500">
+                          {defaultsEngine.tensaoAdmissivel_MPa[t.id]?.toFixed(0)}
+                        </td>
+                        <td className="px-1.5 py-1 text-right">
+                          <InputCoef
+                            value={valSigmaE(t.id)}
+                            onChange={(v) => setSigmaE(t.id, v)}
+                            step="0.5"
+                            range={RANGE_SIGMA_E}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="text-[11px] text-slate-500 mt-1 px-1">
+                  A carga estrutural admissível de cada estaca é σₑ × área da seção.
+                  Valores comerciais de catálogo (sugeridos no cadastro da estaca)
+                  podem superar este limite normativo — nesse caso o alerta A11 sinaliza
+                  a diferença, sem bloquear o cálculo.
+                </div>
+              </>
             )}
           </div>
 

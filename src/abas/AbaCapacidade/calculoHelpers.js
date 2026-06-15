@@ -20,7 +20,12 @@
  * ============================================================================ */
 
 import { GeoSPT } from '@/engine/geospt-engine';
-import { formatoDe, dimensaoDe, geometriaEstaca } from '@/domain/estacas';
+import {
+  formatoDe,
+  dimensaoDe,
+  geometriaEstaca,
+  cargaEstruturalEfetiva,
+} from '@/domain/estacas';
 
 // ----- Constantes de UI -----
 export const MODOS_CALCULO = [
@@ -274,8 +279,13 @@ export function construirOpcoesCalculo(estaca, params) {
     limitaPontaPorAtrito: params.limitaRpRl ?? false,
     tratamentoPonta: params.tratamentoPonta ?? 'calculado',
     coeficientesCustomizados: params.coeficientesCustomizados || null,
-    // Override de carga estrutural por estaca (null = usa tabela da engine)
-    cargaEstrutural_tf_override: estaca.cargaEstrutural_tf_custom ?? null,
+    // CP-16 — carga estrutural admissível pela HIERARQUIA (override → catálogo →
+    // norma σₑ×A). O valor efetivo passa a ser o limite estrutural em todos os
+    // cálculos. A engine recebe via o override que já existe; quando a hierarquia
+    // não resolve (sem σₑ/catálogo/override), passa null e a engine usa a tabela
+    // antiga como fallback (retrocompatível).
+    cargaEstrutural_tf_override:
+      cargaEstruturalEfetiva(estaca, params.coeficientesCustomizados)?.valor ?? null,
   };
 }
 

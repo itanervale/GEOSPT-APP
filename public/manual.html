@@ -231,7 +231,7 @@
     <tr><td>1</td><td><strong>Obra</strong></td><td>Identificação do projeto (nome, local, responsável técnico) que alimenta os memoriais.</td></tr>
     <tr><td>2</td><td><strong>Sondagens</strong></td><td>Cadastro dos furos SPT (NSPT por metro, cota de topo, nível d'água).</td></tr>
     <tr><td>3</td><td><strong>Compat.</strong> (Compatibilização)</td><td>Alinhamento dos furos por cota absoluta, gerando um perfil consolidado.</td></tr>
-    <tr><td>4</td><td><strong>Análise</strong></td><td>Alertas críticos automáticos (A1–A10) e sugestão de agrupamento em domínios geotécnicos.</td></tr>
+    <tr><td>4</td><td><strong>Análise</strong></td><td>Alertas críticos automáticos (A1–A11) e sugestão de agrupamento em domínios geotécnicos.</td></tr>
     <tr><td>5</td><td><strong>Estacas</strong></td><td>Cadastro das estacas e configurações globais de cálculo. Daqui se abre o Corte Esquemático.</td></tr>
     <tr><td>6</td><td><strong>Capacidade</strong></td><td>Cálculo da capacidade de carga em 4 modos + comparativo. Inclui o diagrama de transferência de carga estaca-solo (AOKI 1979) por método.</td></tr>
     <tr><td>7</td><td><strong>Saídas</strong></td><td>Exportação dos resultados em XLSX, PDF e JSON.</td></tr>
@@ -301,7 +301,7 @@ npm run preview</code></pre>
   <li><strong>Aba 1 — Obra.</strong> Preencha nome da obra, localização e responsável técnico (esses campos aparecem nos memoriais).</li>
   <li><strong>Aba 2 — Sondagens.</strong> Cadastre <strong>pelo menos 2 furos</strong>: nome, cota de topo, profundidade, critério de paralisação, nível d'água e as leituras de NSPT metro a metro.</li>
   <li><strong>Aba 3 — Compatibilização.</strong> Ajuste a janela de compatibilização se necessário e clique em <code>Recalcular</code>. Confira a tabela densa e o perfil consolidado.</li>
-  <li><strong>Aba 4 — Análise.</strong> Leia os alertas A1–A10. Se quiser agrupar furos semelhantes, clique em <code>Calcular</code> na sugestão de domínios e aplique.</li>
+  <li><strong>Aba 4 — Análise.</strong> Leia os alertas A1–A11. Se quiser agrupar furos semelhantes, clique em <code>Calcular</code> na sugestão de domínios e aplique.</li>
   <li><strong>Aba 5 — Estacas.</strong> Adicione uma estaca (tipo, formato e dimensão da seção, cota de arrasamento, carga prevista) e revise as configurações globais de cálculo.</li>
   <li><strong>Aba 6 — Capacidade.</strong> Selecione a estaca e o modo de cálculo. Leia a Q<sub>adm</sub>, a carga prevista e a margem (colorida pelo sinal).</li>
   <li><strong>Aba 7 — Saídas.</strong> Exporte o <strong>JSON</strong> (obra salva), o <strong>XLSX</strong> (memoriais) e/ou o <strong>PDF</strong> (documento de entrega).</li>
@@ -423,7 +423,7 @@ npm run preview</code></pre>
 <p>Análise crítica automática do conjunto de sondagens. A aba mostra três blocos:</p>
 <ol>
   <li><strong>Contagem por severidade</strong> — número de alertas críticos, moderados e informativos;</li>
-  <li><strong>Lista de alertas (A1–A10)</strong> — cada alerta é um card que aponta uma possível inconsistência ou ponto de atenção;</li>
+  <li><strong>Lista de alertas (A1–A11)</strong> — cada alerta é um card que aponta uma possível inconsistência ou ponto de atenção;</li>
   <li><strong>Sugestão de agrupamento em domínios</strong> — uma análise (k-means simplificado) que propõe agrupar furos semelhantes em domínios geotécnicos.</li>
 </ol>
 
@@ -432,8 +432,8 @@ npm run preview</code></pre>
   Clique em <code>Calcular</code> para gerá-la. Ao aplicar, o domínio sugerido é gravado em cada sondagem, permitindo filtrar cálculos por região do terreno (nas Abas 3 e 6).
 </div>
 
-<h4>Os alertas A1–A10</h4>
-<p>A análise gera alertas conforme limites técnicos. Observe duas particularidades: o <strong>A6</strong> (dimensão de estaca fora da faixa usual) é o único alerta sobre <strong>estacas</strong> — aparece no painel da Aba 4, no formulário e na listagem da Aba 5, e é registrado no JSON de auditoria; e, quando não há estaca cadastrada com cota de arrasamento, o alerta A9 vira a variante informativa <strong>A9_info</strong>.</p>
+<h4>Os alertas A1–A11</h4>
+<p>A análise gera alertas conforme limites técnicos. Observe duas particularidades: os alertas <strong>A6</strong> (dimensão de estaca fora da faixa usual) e <strong>A11</strong> (carga estrutural acima do valor de norma) são os que tratam de <strong>estacas</strong> — aparecem no painel da Aba 4, no formulário e na listagem da Aba 5, e são registrados no JSON de auditoria; e, quando não há estaca cadastrada com cota de arrasamento, o alerta A9 vira a variante informativa <strong>A9_info</strong>.</p>
 
 <div class="tbl-wrap">
 <table>
@@ -450,6 +450,7 @@ npm run preview</code></pre>
     <tr><td><strong>A9</strong></td><td><span class="badge media">moderado</span></td><td>Aterro espesso previsto sob a estaca</td><td>Cota de arrasamento &gt; 2,5 m <strong>acima</strong> da média dos topos das sondagens</td><td>Aterro espesso; verificar material, compactação e sondagens no aterro.</td></tr>
     <tr><td><strong>A9_info</strong></td><td><span class="badge baixa">info</span></td><td>Verificação A9/A10 pendente</td><td>Não há estaca cadastrada com cota de arrasamento</td><td>Cadastrar estaca na Aba 5 para a verificação.</td></tr>
     <tr><td><strong>A10</strong></td><td><span class="badge media">moderado</span></td><td>Corte elevado previsto sob a estaca</td><td>Cota de arrasamento &gt; 2,5 m <strong>abaixo</strong> da média dos topos das sondagens</td><td>Corte elevado; possível desconfinamento e redução de capacidade.</td></tr>
+    <tr><td><strong>A11</strong></td><td><span class="badge baixa">aviso</span></td><td>Carga estrutural acima do valor de norma</td><td>Carga estrutural em uso (catálogo comercial ou valor informado) maior que σ<sub>e</sub> × área da seção (Tabela 1.10)</td><td>Sobre estacas. Informa o valor de norma σ<sub>e</sub>×A; aparece nas Abas 4 e 5 e no JSON de auditoria. <strong>Não bloqueia</strong> o cálculo.</td></tr>
   </tbody>
 </table>
 </div>
@@ -479,8 +480,22 @@ npm run preview</code></pre>
 <p>Os demais tipos (hélice contínua, escavadas, raiz) são circulares por natureza executiva. O formulário exibe <strong>A_p e U ao vivo</strong> conforme você digita a dimensão — os mesmos valores aparecem no detalhamento da Aba 6, nos PDFs, no XLSX e no JSON de auditoria (bloco <code>geometriaSecao</code>).</p>
 <p>Dimensão menor que 15 cm ou maior que 120 cm dispara o alerta <strong>A6</strong> (ver Aba 4) — informativo, <strong>não bloqueia</strong> o cálculo.</p>
 
-<h4>Carga estrutural admissível</h4>
-<p>A tabela interna de carga estrutural é indexada por <strong>diâmetro de seção circular</strong>. Para a estaca quadrada, o lado é usado como chave equivalente — decisão <strong>conservadora</strong> (a área da seção quadrada, L&sup2;, é maior que a do círculo de mesma dimensão, &pi;&middot;L&sup2;/4, logo a capacidade estrutural real é maior que a tabelada). Recomenda-se informar o <strong>valor do fabricante</strong> no campo de capacidade estrutural (override), que tem precedência. Dimensão sem entrada na tabela &rarr; sem limite estrutural automático (o app avisa; nenhum valor é inventado).</p>
+<h4>Carga estrutural admissível (Tabela 1.10)</h4>
+<p>A carga estrutural admissível da estaca é <strong>σ<sub>e</sub> × área da seção</strong>, onde σ<sub>e</sub> é a <strong>tensão admissível estrutural</strong> do tipo de estaca, definida na <strong>Tabela 1.10</strong> (editável no editor de coeficientes). Isso vale para qualquer dimensão — circular ou quadrada — sem depender de uma tabela por diâmetro fixo.</p>
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>Tipo</th><th>σ<sub>e</sub> (MPa)</th></tr></thead>
+  <tbody>
+    <tr><td>Hélice contínua</td><td>6</td></tr>
+    <tr><td>Escavada (a seco)</td><td>5</td></tr>
+    <tr><td>Escavada (com fluido)</td><td>6</td></tr>
+    <tr><td>Pré-moldada cravada</td><td>11</td></tr>
+    <tr><td>Raiz</td><td>12</td></tr>
+  </tbody>
+</table>
+</div>
+<p>O valor efetivo usado nos cálculos segue uma <strong>hierarquia</strong>: (1) valor <strong>informado</strong> no campo de capacidade estrutural (precedência absoluta); senão (2) valor de <strong>catálogo comercial</strong>, se a dimensão é padronizada para o tipo; senão (3) <strong>cálculo</strong> σ<sub>e</sub>×A. No cadastro da estaca, botões sugerem o valor de catálogo e o de norma — clicáveis, mas a entrada manual é sempre permitida.</p>
+<p>Valores de catálogo comercial frequentemente <strong>superam</strong> o limite normativo σ<sub>e</sub>×A (que é conservador). Quando isso ocorre, o alerta <strong>A11</strong> sinaliza a diferença e informa o valor de norma — sem bloquear o cálculo. A estaca metálica (σ<sub>e</sub> = 120 MPa) ainda não consta no sistema (prevista para evolução futura).</p>
 
 <h4>Configurações globais de cálculo</h4>
 <p>Painel <code>&#x2699; Configurações globais de cálculo</code>:</p>
@@ -580,7 +595,7 @@ npm run preview</code></pre>
 
 <div class="callout warn">
   <div class="callout-title">Carga estrutural como referência</div>
-  A carga estrutural da estaca é uma <strong>carga admissível</strong> (já contém fator de segurança). Por isso, o aviso de capacidade estrutural compara grandezas no <strong>mesmo estado-limite</strong>: no cenário "Carga prevista" (serviço), compara-se a carga prevista com a estrutural admissível; nos cenários "Prevista × FS" e "Ruptura" (último), a referência exibida é a estrutural admissível <strong>multiplicada pelo FS<sub>g</sub></strong>. A carga estrutural nunca altera o traçado do diagrama — é apenas referência ao projetista.
+  A carga estrutural da estaca é uma <strong>carga admissível</strong> (já contém fator de segurança). Por isso, o aviso de capacidade estrutural compara grandezas no <strong>mesmo estado-limite</strong>: no cenário "Carga prevista" (serviço), compara-se a carga prevista com a estrutural admissível; nos cenários "Prevista × FS" e "Ruptura" (último), a referência exibida é a estrutural admissível <strong>multiplicada pelo FS<sub>g</sub></strong>. A carga estrutural nunca altera o traçado do diagrama — é apenas referência ao projetista. No painel de tensão, uma <strong>linha vertical tracejada</strong> marca o limite (σ<sub>e</sub> no cenário de serviço; σ<sub>e</sub>×FS<sub>g</sub> nos cenários de estado-limite último) e o trecho da curva σ(z) que ultrapassa esse limite é desenhado em <strong>vermelho</strong>.
 </div>
 
 <div class="callout">

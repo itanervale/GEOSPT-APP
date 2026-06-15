@@ -37,6 +37,7 @@ import {
   labelTipoEstaca,
   rotuloDimensaoCurto,
   avaliarAlertaA6,
+  avaliarAlertaA11,
 } from '@/domain/estacas';
 import ModalEditarEstaca from './ModalEditarEstaca';
 import PainelConfigCalculo from './PainelConfigCalculo';
@@ -233,6 +234,14 @@ export default function AbaEstacas() {
                               ⚠A6
                             </span>
                           )}
+                          {avaliarAlertaA11(e, params.coeficientesCustomizados) && (
+                            <span
+                              className="ml-1 text-amber-600 cursor-help"
+                              title={avaliarAlertaA11(e, params.coeficientesCustomizados).mensagem}
+                            >
+                              ⚠A11
+                            </span>
+                          )}
                         </td>
                         <td className="px-1 py-1 font-mono text-right">
                           {e.cotaArrasamento_m ?? '—'}
@@ -324,6 +333,30 @@ export default function AbaEstacas() {
             );
           })()}
 
+          {/* CP-16 — Avisos A11 (carga estrutural acima da norma σₑ×A).
+              Informativo: NÃO impede a verificação da capacidade de carga. */}
+          {(() => {
+            const avisosA11 = estacas
+              .map((e) => avaliarAlertaA11(e, params.coeficientesCustomizados))
+              .filter(Boolean);
+            if (avisosA11.length === 0) return null;
+            return (
+              <div className="bg-amber-50 border border-amber-300 rounded p-2">
+                <div className="text-xs font-bold text-amber-800 mb-1">
+                  ⚠ Alerta A11 — carga estrutural acima do valor de norma (σₑ × A)
+                </div>
+                <ul className="text-xs text-amber-800 space-y-0.5">
+                  {avisosA11.map((a, i) => (
+                    <li key={i}>
+                      <span className="font-mono font-bold">{a.estaca}</span>:{' '}
+                      {a.mensagem}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
+
           {/* Configurações globais de cálculo */}
           <PainelConfigCalculo
             config={config}
@@ -371,6 +404,7 @@ export default function AbaEstacas() {
           isNovo={editandoEstaca.idx === -1}
           sondagens={sondagens}
           dominios={dominios}
+          coeficientesCustomizados={params.coeficientesCustomizados ?? null}
           onSalvar={salvarEstaca}
           onCancelar={() => setEditandoEstaca(null)}
         />

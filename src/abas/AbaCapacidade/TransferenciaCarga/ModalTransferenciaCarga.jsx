@@ -23,7 +23,7 @@ import {
   CENARIOS,
   MODELOS_AOKI,
 } from './transferenciaHelpers';
-import { cargaEstruturalDe, formatoDe, dimensaoDe } from '@/domain/estacas';
+import { cargaEstruturalEfetiva, tensaoAdmissivelDe, formatoDe, dimensaoDe } from '@/domain/estacas';
 
 const NOME_METODO = { DQ: 'Décourt-Quaresma', AV: 'Aoki-Velloso' };
 
@@ -33,6 +33,7 @@ export default function ModalTransferenciaCarga({
   metodo = 'DQ',
   FSg = 2.0,
   naProf_m = null,
+  coeficientesCustomizados = null,
   onFechar,
 }) {
   const [cenarioId, setCenarioId] = useState('prevista');
@@ -42,9 +43,12 @@ export default function ModalTransferenciaCarga({
 
   const Pprev_tf = estaca?.cargaPrevista_tf ?? null;
   const Pprev_kN = Pprev_tf != null && Pprev_tf > 0 ? tfParaKn(Pprev_tf) : null;
-  const cargaEstr_tf = cargaEstruturalDe(estaca?.tipoEstaca, dimensaoDe(estaca), formatoDe(estaca));
+  // CP-16 — carga estrutural admissível pela hierarquia (override→catálogo→norma)
+  const cargaEstrInfo = cargaEstruturalEfetiva(estaca, coeficientesCustomizados);
+  const cargaEstrEfetiva_tf = cargaEstrInfo.valor;
   const cargaEstrOverride_tf = estaca?.cargaEstrutural_tf_custom ?? null;
-  const cargaEstrEfetiva_tf = cargaEstrOverride_tf ?? cargaEstr_tf;
+  // Tensão admissível σₑ (MPa) da Tabela 1.10 — base da linha-limite no diagrama
+  const sigmaE_MPa = tensaoAdmissivelDe(estaca?.tipoEstaca, coeficientesCustomizados);
 
   const pacote = useMemo(
     () => (info ? montarCenario(info, cenarioId, modelo, Pprev_kN, FSg) : null),
@@ -169,7 +173,23 @@ export default function ModalTransferenciaCarga({
       {/* Área central */}
       <div className="flex-1 overflow-auto p-4">
         {pacote?.ok ? (
-          <DiagramaTransferenciaSVG info={info} pacote={pacote} estaca={estaca} naProf_m={naProf_m} metodo={metodo} />
+          <DiagramaTransferenciaSVG
+            info={info}
+            pacote={pacote}
+            estaca={estaca}
+            naProf_m={naProf_m}
+            metodo={metodo}
+            sigmaLimite_MPa={
+              sigmaE_MPa == null
+                ? null
+                : cenarioId === 'prevista'
+                  ? sigmaE_MPa
+                  : sigmaE_MPa * FSg
+            }
+            sigmaLimiteRotulo={
+              cenarioId === 'prevista' ? 'σ_e (norma)' : 'σ_e × FS'
+            }
+          />
         ) : (
           <div className="max-w-2xl mx-auto mt-8 bg-red-50 border border-red-300 rounded p-4">
             <div className="text-sm font-bold text-red-800 mb-1">Não é possível plotar este cenário</div>
@@ -198,6 +218,15 @@ export default function ModalTransferenciaCarga({
               <> — a carga no topo ({kNparaTf(P_atual_kN).toFixed(1)} tf) <strong>supera</strong> esta referência estrutural; nesse caso a estrutural rege o dimensionamento.</>
             ) : (
               <> — a carga no topo ({kNparaTf(P_atual_kN).toFixed(1)} tf) está dentro desta referência estrutural.</>
+            )}
+            {sigmaE_MPa != null && (
+              <span className="block mt-0.5">
+                No painel de tensão, a linha tracejada marca{' '}
+                {cenarioId === 'prevista'
+                  ? `σ_e = ${sigmaE_MPa} MPa`
+                  : `σ_e × FS = ${(sigmaE_MPa * FSg).toFixed(1)} MPa`}
+                ; o trecho da curva em vermelho indica onde a tensão axial excede esse limite.
+              </span>
             )}
           </div>
         )}

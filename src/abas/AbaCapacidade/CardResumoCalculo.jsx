@@ -356,6 +356,7 @@ export default function CardResumoCalculo({
           metodo={transf.metodo}
           FSg={FSg}
           naProf_m={naProf_m}
+          coeficientesCustomizados={params?.coeficientesCustomizados ?? null}
           onFechar={() => setTransf(null)}
         />
       )}

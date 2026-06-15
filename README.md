@@ -124,7 +124,7 @@ Análise crítica automática do conjunto de sondagens.
 
 **O que mostra:**
 1. **Contagem por severidade** — número de alertas críticos, moderados e informativos.
-2. **Lista de alertas (A1–A10)** — cada alerta é um card que aponta uma possível inconsistência ou ponto de atenção (ex.: divergência entre furos, cota de arrasamento acima do topo das sondagens).
+2. **Lista de alertas (A1–A11)** — cada alerta é um card que aponta uma possível inconsistência ou ponto de atenção (ex.: divergência entre furos, cota de arrasamento acima do topo das sondagens).
 3. **Sugestão de agrupamento em domínios** — uma análise (k-means simplificado) que propõe agrupar furos semelhantes em domínios geotécnicos.
 
 > A sugestão de domínio **não roda sozinha** — clique em **"Calcular"**. Ao aplicar, o domínio sugerido é gravado em cada sondagem, permitindo filtrar cálculos por região do terreno.
@@ -155,6 +155,10 @@ Para cada estaca define-se: tipo (hélice contínua, pré-moldada, raiz, etc.), 
 - **Editor de coeficientes** — permite ajustar os coeficientes dos métodos, com presets.
 
 A partir desta aba abre-se também o **Corte Esquemático** (botão "📐 Corte esquemático").
+
+#### Carga estrutural admissível (CP-16)
+
+A carga estrutural admissível é **σₑ × área da seção**, com σₑ da **Tabela 1.10** (editável): hélice 6, escavada a seco 5, escavada com fluido 6, pré-moldada 11, raiz 12 MPa. O valor efetivo segue a hierarquia **override → catálogo comercial → cálculo σₑ×A** e é o limite estrutural em todos os cálculos. Quando o valor em uso (catálogo/override) supera σₑ×A, o alerta **A11** sinaliza a diferença (sem bloquear). No diagrama de transferência, uma linha-limite marca σₑ (ou σₑ×FS) e o trecho de σ(z) acima dela fica em vermelho.
 
 ### Aba 6 — Capacidade
 

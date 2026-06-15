@@ -13,7 +13,7 @@
  * ============================================================================ */
 
 import { GeoSPT } from '@/engine/geospt-engine';
-import { geometriaEstaca } from '@/domain/estacas';
+import { geometriaEstaca, cargaEstruturalEfetiva } from '@/domain/estacas';
 import {
   perfilEnvoltoriaUtil,
   opcoesParaEstaca,
@@ -151,13 +151,21 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
       'Dimensão (m) — Ø ou lado',
       'Cota arrasamento (m)',
       'Carga prevista (tf)',
-      'Cap. estrutural custom (tf)',
+      'Cap. estrutural adm. (tf)',
+      'Origem cap. estrutural',
+      'σe (MPa)',
       'Coord X',
       'Coord Y',
       'Domínio',
     ],
   ];
   estacas.forEach((e) => {
+    const ce = cargaEstruturalEfetiva(e, params.coeficientesCustomizados);
+    const origemTxt =
+      ce.origem === 'override' ? 'informada'
+      : ce.origem === 'catalogo' ? 'catálogo'
+      : ce.origem === 'norma' ? 'norma (σe×A)'
+      : '—';
     estRows.push([
       e.nome,
       e.tipoEstaca ?? '',
@@ -165,7 +173,9 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
       (e.dimensao_m ?? e.diametro_m) ?? '',
       e.cotaArrasamento_m ?? '',
       e.cargaPrevista_tf ?? '',
-      e.cargaEstrutural_tf_custom ?? '(tabela)',
+      ce.valor != null ? Number(ce.valor.toFixed(1)) : '',
+      origemTxt,
+      ce.sigma_MPa ?? '',
       e.coordenadas?.x ?? '',
       e.coordenadas?.y ?? '',
       e.dominioGeotecnico ?? '',

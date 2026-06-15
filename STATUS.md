@@ -267,3 +267,17 @@ capturar pelo menos:
 - Manual (5.6.1 + imagem 11), README, NOTAS_TECNICAS e HISTORICO atualizados.
 - Próximo (CP-16): tensões máximas admissíveis do material por norma no diagrama.
 - Validação: 32,84 tf · casamento 45 · geometria 12 · transferência 33 · build OK.
+
+
+## CP-16 — Tensão admissível estrutural (Tabela 1.10) + carga estrutural por hierarquia + alerta A-11
+
+- **Tabela 1.10** (σₑ por tipo, editável no editor de coeficientes): hélice 6, escavada a seco 5, escavada com fluido 6, pré-moldada 11, raiz 12 MPa. (Metálica 120 MPa → CP-17, ainda não no sistema.)
+- **Carga estrutural admissível = σₑ × área da seção** (Opção A) — substitui a tabela por diâmetro do CP-14 como fonte de verdade; funciona para qualquer dimensão (circular/quadrada). A tabela antiga permanece na engine apenas como fallback retrocompatível (216 testes externos intactos).
+- **Hierarquia do valor efetivo:** (1) override do usuário → (2) catálogo comercial (dimensões padronizadas; valores das tabelas em kN ÷10) → (3) cálculo σₑ×A. O valor efetivo é o limite estrutural em TODOS os cálculos (passado à engine via o override já existente).
+- **Sugestões no cadastro:** botões clicáveis "usar catálogo" / "usar norma" + entrada manual. Catálogo: hélice (Ø27,5–100), escavada a seco (trado), escavada com fluido (estação), pré-moldada circular (vibrada) e quadrada (Tab 2.2), raiz (limite superior da faixa).
+- **Alerta A-11:** dispara quando a carga estrutural em uso (catálogo ou override) > σₑ×A; informa o valor de norma. Nas Abas 4 e 5 e no JSON de auditoria. NÃO bloqueia o cálculo.
+- **Diagrama de transferência:** linha vertical tracejada no painel de tensão em σ=σₑ (cenário serviço) ou σ=σₑ×FSg (último/ruptura); trecho de σ(z) acima do limite em vermelho.
+- **σ → letra grega** na UI.
+- **Propagação:** carga estrutural efetiva e A-11 no XLSX, PDFs e auditoria JSON (bloco cargaEstruturalAdmissivel: valor, origem, catálogo, norma, σₑ).
+- Engine: 2 adições aditivas (tabela tensaoAdmissivel_MPa + util.cargaEstruturalNorma_tf). Caminho de cálculo intocado.
+- Validação: 32,84 tf · casamento 45 · geometria 12 · transferência 33 · build OK.

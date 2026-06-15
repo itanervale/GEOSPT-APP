@@ -1,4 +1,4 @@
-import { geometriaEstaca } from '@/domain/estacas';
+import { geometriaEstaca, cargaEstruturalEfetiva } from '@/domain/estacas';
 /* ============================================================================
  * pdfHelpers — infra compartilhada dos relatórios HTML/PDF (compacto e completo)
  *
@@ -246,7 +246,15 @@ export function blocoEstacaCabecalho(estaca, params, cotaConsM1, temAlvo, carga)
       <th>Carga prevista</th><td class="value">${temAlvo ? carga + ' tf' : '<em>não definida</em>'}</td></tr>
   <tr><th>Coordenadas</th><td>${estaca.coordenadas ? `(${estaca.coordenadas.x ?? '—'}, ${estaca.coordenadas.y ?? '—'})` : '—'}</td>
       <th>Tratamento de ponta</th><td>${escHtml(params.tratamentoPonta || 'calculado')}</td></tr>
-  <tr><th>Capacidade estrutural</th><td>${estaca.cargaEstrutural_tf_custom != null ? `<span class="badge badge-warn">${estaca.cargaEstrutural_tf_custom} tf (custom)</span>` : 'tabela'}</td>
+  <tr><th>Capacidade estrutural</th><td>${(() => {
+        const ce = cargaEstruturalEfetiva(estaca, params.coeficientesCustomizados);
+        if (ce.valor == null) return 'não definida';
+        const origem = ce.origem === 'override' ? 'informada' : ce.origem === 'catalogo' ? 'catálogo' : 'norma σe×A';
+        const excede = ce.norma != null && ce.valor > ce.norma + 0.05;
+        const badge = excede ? 'badge-warn' : 'badge-ok';
+        return `<span class="badge ${badge}">${ce.valor.toFixed(1)} tf (${origem})</span>` +
+          (excede ? ` <small>— A11: norma σe×A = ${ce.norma.toFixed(1)} tf</small>` : '');
+      })()}</td>
       <th>Limita R_p ≤ R_l</th><td>${params.limitaRpRl ? 'Sim' : 'Não'}</td></tr>
   <tr><th>Despreza atrito último 1 m</th><td>${(params.desprezaUltimoMetroAtrito ?? true) ? 'Sim' : 'Não'}</td>
       <th>Coeficientes</th><td>${params.coeficientesCustomizados ? '<span class="badge badge-warn">CUSTOMIZADOS</span>' : 'padrão'}</td></tr>
