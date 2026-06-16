@@ -192,6 +192,7 @@
   <a href="#s5-6"  class="l2">5.6 Aba 6 — Capacidade</a>
   <a href="#s5-6-1" class="l3">5.6.1 Transferência de carga</a>
   <a href="#s5-7"  class="l2">5.7 Aba 7 — Saídas</a>
+  <a href="#s5-7-1" class="l3">5.7.1 Salvamento automático</a>
   <a href="#s6"    class="l1">6. O Corte Esquemático</a>
   <a href="#s6-1"  class="l2">6.1 Montar a seleção</a>
   <a href="#s6-2"  class="l2">6.2 Camadas (toggles)</a>
@@ -240,8 +241,8 @@
 </div>
 
 <div class="callout warning">
-  <div class="callout-title">O app não persiste dados</div>
-  O GeoSPT <strong>não salva nada no navegador</strong>. Se você fechar a aba sem exportar, perde o trabalho. Exporte a obra em <strong>JSON</strong> (botão <code>&#x1F4E4; Exportar &#x25BE;</code> no topo) com frequência — esse arquivo é a sua "obra salva". Veja a <a href="#s7">seção 7</a>.
+  <div class="callout-title">Salvamento automático e backup</div>
+  O GeoSPT <strong>salva sua obra automaticamente</strong> neste navegador (autosave), poucos segundos após cada alteração — então um travamento, um recarregar ou fechar a aba por engano <strong>não fazem mais perder o trabalho</strong>: ao reabrir, o app pergunta se deseja recuperar. Um indicador no topo mostra "✓ salvo". <strong>Atenção:</strong> o autosave é local a este navegador e computador — ele <strong>não</strong> substitui o backup forte. Exporte a obra em <strong>JSON</strong> (botão <code>&#x1F4E4; Exportar &#x25BE;</code>) com frequência; esse arquivo é o que você leva para outro computador e guarda com segurança. Em janela anônima o autosave pode ficar indisponível (o indicador avisa) — aí o export manual é essencial. Veja a <a href="#s7">seção 7</a>.
 </div>
 
 <div class="callout tip">
@@ -632,6 +633,18 @@ npm run preview</code></pre>
   <img src="imagens-manual/07_saidas.png" alt="Aba de saídas com os cartões de exportação XLSX, PDF e JSON" onerror="imgFallback(this,'imagens-manual/07_saidas.png')">
   <figcaption>Aba 7 — Saídas: cartões de exportação (XLSX, PDF e JSON).</figcaption>
 </figure>
+
+<h4 id="s5-7-1">5.7.1 Salvamento automático (autosave)</h4>
+<p>O GeoSPT salva a obra <strong>automaticamente neste navegador</strong>, poucos segundos após cada alteração. Um indicador no topo mostra o estado: <strong>"💾 salvando…"</strong> e depois <strong>"✓ salvo"</strong>.</p>
+<ul>
+  <li><strong>Recuperação:</strong> se o app travar, a página for recarregada ou a aba fechada por engano, ao reabrir o GeoSPT <strong>pergunta se deseja recuperar</strong> a obra salva. Restaurar carrega sondagens, estacas e parâmetros; os cálculos são refeitos ao abrir a aba de capacidade.</li>
+  <li><strong>Novo projeto:</strong> o botão <code>&#x1F195; Novo</code> no topo limpa a obra atual e o salvamento automático, começando do zero (pede confirmação se houver dados).</li>
+  <li><strong>Limitações (importante):</strong> o autosave é local a <em>este</em> navegador e computador. Ele <strong>não</strong> acompanha você para outra máquina, não sobrevive à limpeza de cache do navegador, e pode ficar indisponível em janelas anônimas (o indicador avisa: "⚠ autosave indisponível"). Por isso, <strong>continue exportando a obra em JSON</strong> — esse arquivo é o backup forte e portável.</li>
+</ul>
+<div class="callout warning">
+  <div class="callout-title">Autosave não substitui o backup</div>
+  Pense no autosave como uma rede de proteção contra acidentes (travamento, recarregar). O <strong>arquivo JSON exportado</strong> continua sendo a sua "obra salva" definitiva — o único formato que você leva para outro computador, arquiva e compartilha.
+</div>
 
 <!-- 6. CORTE ESQUEMÁTICO -->
 <h2 id="s6">6. O Corte Esquemático</h2>

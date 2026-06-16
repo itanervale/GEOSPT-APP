@@ -1289,3 +1289,72 @@ limite — confirmando que a estrutural rege antes da ruptura geotécnica.
 ### Cabo solto
 Nenhum específico do CP-16. O CP-17 trará a estaca metálica (σₑ=120 MPa já previsto na
 Tabela 1.10 conceitualmente, mas o tipo ainda não existe no cadastro nem na engine).
+
+
+---
+
+## CP-17 — Salvamento automático (autosave) em localStorage
+
+### Motivação
+Bug relatado: estaca Ø10 abriu o diagrama de transferência, a tela ficou branca e
+o usuário PERDEU todos os dados. Duas causas independentes: (a) falta de Error
+Boundary (corrigida em hotfix anterior); (b) o app NÃO persistia a obra — recarregar
+a página perdia tudo (comportamento histórico documentado: "exporte o JSON antes de
+fechar"). O CP-17 ataca a causa (b) com autosave, decisão de produto tomada à parte
+do hotfix.
+
+### Decisões (travadas com o usuário)
+1. Gatilho: a cada alteração, com DEBOUNCE de ~1,5 s (não a cada tecla).
+2. Recuperação ao abrir: PERGUNTA ("Recuperar trabalho anterior?") — não restaura
+   silenciosamente.
+3. Payload ENXUTO: salva entrada (identificacao, sondagens, estacas, parametros,
+   dominios, corteEsquematico) + resumo de UI; OMITE resultadosCalculo (derivados,
+   recalculados ao abrir a Aba 6). Mantém o payload pequeno vs limite ~5 MB.
+4. Botão "Novo projeto" no Header (limpa estado + autosave, com confirmação).
+5. Indicador visual discreto no Header (idle/salvando/salvo/erro/off).
+6. Degradação graciosa: incognito/quota/storage bloqueado → não quebra; status 'off'.
+
+### Arquitetura
+- src/state/persistenciaObra.js — camada pura sobre localStorage:
+  - localStorageDisponivel() — probe set/get/remove em try/catch (incognito-safe).
+  - salvarObra(estado) — monta payload enxuto, JSON.stringify, setItem. Obra vazia
+    → remove a chave (coerência com "Novo"). Retorna {ok, motivo?, bytes?}.
+    QuotaExceededError → {ok:false, motivo:'quota'}.
+  - carregarObraSalva() — getItem + parse; valida _schema e _schemaVersao. Versão
+    DIFERENTE → {incompativel:true} (não migra automaticamente — segurança). JSON
+    inválido/ausente → null.
+  - limparObraSalva(), existeAutosave(), obraTemConteudo(estado).
+  - Chave: 'geospt:autosave:v1'.
+- src/state/ObraProvider.jsx:
+  - useEffect com debounceRef (setTimeout 1500 ms) disparado por [estado]. Guarda
+    primeiraRenderRef para NÃO salvar no 1º render (evita gravar lixo / sobrescrever
+    autosave antes da recuperação). Status em useState ('idle'|'salvando'|'salvo'|
+    'erro'|'off').
+  - novaObra() — limpa autosave, reseta ESTADO_INICIAL, primeiraRenderRef=true.
+  - restaurarAutosave(payload) — REUSA carregarObra (que já migra coeficientes);
+    aplica resumo de UI; primeiraRenderRef=true para não re-salvar no ato.
+  - Expostos no context: autosaveStatus, novaObra, restaurarAutosave.
+- src/components/RecuperacaoAutosave.jsx — modal de recuperação (Decisão 2): no
+  mount, carregarObraSalva(); se payload → pergunta Restaurar/Começar nova; se
+  incompativel → avisa e só permite descartar. Montado dentro do ObraProvider no App.
+- src/layout/Header.jsx — IndicadorAutosave (badge por status, com title
+  explicativo) + botão "🆕 Novo".
+
+### Por que NÃO salvar resultadosCalculo
+São derivados de sondagens+estacas+parametros pela engine. Salvá-los inflaria o
+payload (memoriais de todos os modos × todas as estacas) e arriscaria estourar a
+quota. Recalcular ao abrir a Aba 6 é barato e mantém o autosave leve. Trade-off
+consciente: ao restaurar, a Aba 6 recomputa (não há resultado "instantâneo" antes
+de visitá-la).
+
+### Versionamento e segurança
+O autosave grava _schemaVersao = SCHEMA_VERSAO. Ao carregar, versão diferente é
+RECUSADA (incompativel) em vez de migrada — porque um app atualizado lendo um
+payload antigo é exatamente o tipo de incompatibilidade que reintroduziria crash.
+Migração explícita pode ser adicionada no futuro, caso a caso. JSON corrompido é
+silenciosamente ignorado (try/catch).
+
+### Limitações conhecidas (comunicadas ao usuário)
+Local ao navegador/máquina; não portável; não sobrevive a limpar cache; pode estar
+'off' em janela anônima. O export JSON permanece o backup forte. Sincronização entre
+dispositivos exigiria backend (fora de escopo; desproporcional ao problema atual).

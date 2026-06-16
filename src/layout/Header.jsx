@@ -20,11 +20,13 @@ import { BALSAS } from '@/engine/dataset-balsas';
 import Banner from '@/components/ui/Banner';
 import BotaoPrim from '@/components/ui/BotaoPrim';
 import ModalExportar from '@/components/ui/ModalExportar';
+import ModalConfirmar from '@/components/ui/ModalConfirmar';
 
 export default function Header() {
-  const { estado, carregarObra, exportarObra } = useObra();
+  const { estado, carregarObra, exportarObra, autosaveStatus, novaObra } = useObra();
   const fileInputRef = useRef(null);
   const [toast, setToast] = useState(null);
+  const [confirmarNovo, setConfirmarNovo] = useState(false);
 
   const mostrarToast = (tipo, msg, durMs = 3000) => {
     setToast({ tipo, msg });
@@ -200,6 +202,7 @@ export default function Header() {
           </span>
           <span className="text-xs text-slate-400">v{GeoSPT.versao}</span>
           <span className="text-sm text-slate-300 ml-2 truncate">— {nomeObra}</span>
+          <IndicadorAutosave status={autosaveStatus} />
         </div>
         <div className="flex gap-2 shrink-0">
           <BotaoPrim tipo="secundario" onClick={handleCarregarBalsas}>
@@ -216,6 +219,24 @@ export default function Header() {
             }
           >
             📖 Manual
+          </BotaoPrim>
+          {/* CP-17 — Novo projeto (Decisão 4): limpa estado e autosave */}
+          <BotaoPrim
+            tipo="secundario"
+            onClick={() => {
+              const temConteudo =
+                Object.keys(estado.obra.sondagens || {}).length > 0 ||
+                (estado.obra.estacas || []).length > 0;
+              if (!temConteudo) {
+                // Nada a perder → executa direto, sem pedir confirmação.
+                novaObra();
+                mostrarToast('ok', '🆕 Novo projeto iniciado. Tudo limpo.', 3000);
+              } else {
+                setConfirmarNovo(true); // abre o modal estilizado
+              }
+            }}
+          >
+            🆕 Novo
           </BotaoPrim>
           <BotaoPrim
             tipo="secundario"
@@ -263,9 +284,32 @@ export default function Header() {
         </div>
       </header>
       {toast && (
-        <div className="fixed top-4 right-4 z-50 max-w-md shadow-lg">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[70] max-w-md shadow-xl">
           <Banner tipo={toast.tipo}>{toast.msg}</Banner>
         </div>
+      )}
+      {confirmarNovo && (
+        <ModalConfirmar
+          titulo="Iniciar um novo projeto?"
+          mensagem={
+            <>
+              A obra atual será <strong>removida da memória e do salvamento
+              automático</strong>. Esta ação não pode ser desfeita.
+              <br />
+              <br />
+              Se ainda não exportou, faça o backup (<strong>Exportar</strong>) antes
+              de continuar.
+            </>
+          }
+          rotuloConfirmar="Iniciar novo projeto"
+          tipoConfirmar="perigo"
+          onConfirmar={() => {
+            setConfirmarNovo(false);
+            novaObra();
+            mostrarToast('ok', '🆕 Novo projeto iniciado. Tudo limpo.', 3000);
+          }}
+          onCancelar={() => setConfirmarNovo(false)}
+        />
       )}
       {exportarModal && (
         <ModalExportar
@@ -275,5 +319,37 @@ export default function Header() {
         />
       )}
     </>
+  );
+}
+
+/* CP-17 — Indicador discreto de autosave (Decisão 5). */
+function IndicadorAutosave({ status }) {
+  const mapa = {
+    idle: { txt: '', classe: '' },
+    salvando: { txt: '💾 salvando…', classe: 'bg-slate-700 text-slate-300' },
+    salvo: { txt: '✓ salvo', classe: 'bg-green-900/50 text-green-300' },
+    erro: { txt: '⚠ autosave falhou', classe: 'bg-amber-900/50 text-amber-200' },
+    off: { txt: '⚠ autosave indisponível', classe: 'bg-amber-900/50 text-amber-200' },
+  };
+  const m = mapa[status] || mapa.idle;
+  if (!m.txt) return null;
+  const titulo =
+    status === 'off'
+      ? 'O navegador não permite salvamento automático (ex.: janela anônima). Exporte a obra manualmente para não perder o trabalho.'
+      : status === 'erro'
+        ? 'Não foi possível salvar automaticamente (armazenamento cheio?). Exporte a obra manualmente.'
+        : status === 'salvo'
+          ? 'Obra salva automaticamente neste navegador. Não substitui o backup por Exportar (JSON).'
+          : 'Salvando automaticamente neste navegador…';
+  return (
+    <span
+      className={
+        'text-xs px-2 py-0.5 rounded-full select-none whitespace-nowrap self-center ' +
+        m.classe
+      }
+      title={titulo}
+    >
+      {m.txt}
+    </span>
   );
 }

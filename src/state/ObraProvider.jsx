@@ -9,9 +9,14 @@
  * useObra() lança se chamado fora do Provider — sinaliza bug, não fallback.
  * ============================================================================ */
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { GeoSPT } from '@/engine/geospt-engine';
 import { ESTADO_INICIAL, SCHEMA_VERSAO } from './estadoInicial';
+import {
+  salvarObra,
+  limparObraSalva,
+  localStorageDisponivel,
+} from './persistenciaObra';
 import { migrarDominios } from './dominiosHelper';
 import { normalizarEstacaFormato } from '@/domain/estacas';
 
@@ -25,6 +30,48 @@ export function useObra() {
 
 export function ObraProvider({ children }) {
   const [estado, setEstado] = useState(ESTADO_INICIAL);
+
+  // CP-17 — Autosave em localStorage (Decisão 1: debounce ~1,5 s após a última
+  // alteração). Decisão 5: status visível ('idle'|'salvando'|'salvo'|'erro'|'off').
+  // Decisão 6: degrada graciosamente se o storage não estiver disponível.
+  const [autosaveStatus, setAutosaveStatus] = useState(
+    localStorageDisponivel() ? 'idle' : 'off'
+  );
+  const debounceRef = useRef(null);
+  const primeiraRenderRef = useRef(true);
+  // Guarda se o storage está disponível sem entrar nas deps do efeito (evita
+  // que mudanças de autosaveStatus re-disparem o efeito e cancelem o timeout).
+  const storageOffRef = useRef(!localStorageDisponivel());
+
+  useEffect(() => {
+    if (storageOffRef.current) return; // storage indisponível → sem autosave
+    // Não salvar no primeiro render (estado inicial vazio); evita gravar lixo
+    // e sobrescrever um autosave existente antes da eventual recuperação.
+    if (primeiraRenderRef.current) {
+      primeiraRenderRef.current = false;
+      return;
+    }
+    setAutosaveStatus('salvando');
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const r = salvarObra(estado);
+      setAutosaveStatus(r.ok ? 'salvo' : 'erro');
+    }, 1500);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    // Depende SÓ do estado da obra — não de autosaveStatus (senão o setStatus
+    // acima re-dispara o efeito e o cleanup cancela o timeout, travando em
+    // "salvando"). eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estado]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "Novo projeto" (Decisão 4): zera o estado e limpa o autosave.
+  const novaObra = useCallback(() => {
+    limparObraSalva();
+    primeiraRenderRef.current = true; // o reset não dispara autosave imediato
+    setEstado(ESTADO_INICIAL);
+    setAutosaveStatus(localStorageDisponivel() ? 'idle' : 'off');
+  }, []);
 
   const setUi = (key, value) => {
     setEstado((s) => ({ ...s, ui: { ...s.ui, [key]: value } }));
@@ -393,6 +440,33 @@ export function ObraProvider({ children }) {
     return payload;
   };
 
+  // CP-17 (Decisão 2/3) — Restaura a obra do autosave. Reusa carregarObra (que já
+  // faz migração de coeficientes); resultadosCalculo virão vazios e serão
+  // recalculados naturalmente quando o usuário acessar a Aba 6.
+  const restaurarAutosave = useCallback(
+    (payload) => {
+      if (!payload || !payload.obra) return;
+      primeiraRenderRef.current = true; // o reset não dispara autosave imediato
+      carregarObra(payload.obra);
+      if (payload.ui) {
+        setEstado((s) => ({
+          ...s,
+          ui: {
+            ...s.ui,
+            abaAtiva: payload.ui.abaAtiva ?? s.ui.abaAtiva,
+            estacaSelecionada: payload.ui.estacaSelecionada ?? s.ui.estacaSelecionada,
+            modoCalculoSelecionado:
+              payload.ui.modoCalculoSelecionado ?? s.ui.modoCalculoSelecionado,
+            submodoPerfilMedio:
+              payload.ui.submodoPerfilMedio ?? s.ui.submodoPerfilMedio,
+          },
+        }));
+      }
+      setAutosaveStatus(localStorageDisponivel() ? 'salvo' : 'off');
+    },
+    [] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
   return (
     <ObraContext.Provider
       value={{
@@ -412,6 +486,9 @@ export function ObraProvider({ children }) {
         limparDominios,
         carregarObra,
         exportarObra,
+        autosaveStatus,
+        novaObra,
+        restaurarAutosave,
       }}
     >
       {children}

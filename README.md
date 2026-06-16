@@ -191,6 +191,10 @@ No resumo de cada método há o botão **📉 Transferência de carga**, que abr
 - **Carga estrutural** entra apenas como referência, comparada no mesmo estado-limite (admissível no cenário de serviço; admissível × FS nos cenários de estado-limite último). Nunca altera o traçado.
 - O diagrama é uma estimativa simplificada; não substitui prova de carga (NBR 16903) nem análise por curvas de transferência (t-z).
 
+### Salvamento automático (autosave)
+
+A obra é salva **automaticamente no navegador** (localStorage), com debounce após cada alteração — travamento, recarregar ou fechar a aba não fazem mais perder o trabalho: ao reabrir, o app pergunta se deseja recuperar. Um indicador no topo mostra "✓ salvo". O botão **🆕 Novo** limpa estado e autosave. **Limitações:** é local ao navegador/máquina, não sobrevive à limpeza de cache, pode ficar indisponível em janela anônima — por isso o **export JSON continua sendo o backup forte e portável**. Implementação robusta (try/catch; degrada graciosamente) e versionada (recusa schema antigo ao atualizar o app).
+
 ### Aba 7 — Saídas
 
 Exportação dos resultados.

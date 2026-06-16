@@ -144,6 +144,28 @@ export default function MiniMapaSVG({
     return CORES_DOMINIO[idx % CORES_DOMINIO.length];
   };
 
+  // Bolhas de domínio (item 11) — circle envolvendo furos do mesmo domínio.
+  // DEVE ficar antes de qualquer return condicional (regra dos Hooks): este
+  // useMemo precisa rodar em todos os renders, com ou sem furos/estacas.
+  const bolhasDominio = useMemo(() => {
+    return dominios
+      .map((d) => {
+        const furosDoDominio = furosArr.filter((f) => f.dominio === d);
+        if (furosDoDominio.length < 2) return null; // 1 furo: bolha não faz sentido visual
+        const cx =
+          furosDoDominio.reduce((s, f) => s + f.x, 0) / furosDoDominio.length;
+        const cy =
+          furosDoDominio.reduce((s, f) => s + f.y, 0) / furosDoDominio.length;
+        const rMax = Math.max(
+          ...furosDoDominio.map((f) => Math.hypot(f.x - cx, f.y - cy))
+        );
+        const r_m = rMax + 1.5; // 1.5 m de margem visual
+        return { nome: d, cx, cy, r_m, cor: corDominio(d), n: furosDoDominio.length };
+      })
+      .filter(Boolean);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dominios, furosArr]);
+
   // ============================================================================
   // 2. Dimensões e escala REAL (mesma escala para X e Y — item 8)
   // ============================================================================
@@ -242,31 +264,10 @@ export default function MiniMapaSVG({
   const escalaY0 = plotY1 - 12;
 
   // ============================================================================
-  // 5. Bolhas de domínio (item 11) — circle envolvendo furos do mesmo domínio
+  // 5. Bolhas de domínio (item 11) — calculado ANTES do early return (regra dos
+  // Hooks: todo Hook deve rodar em todo render, na mesma ordem).
   // ============================================================================
-  const bolhasDominio = useMemo(() => {
-    return dominios.map((d) => {
-      const furosDoDominio = furosArr.filter((f) => f.dominio === d);
-      if (furosDoDominio.length < 2) return null; // 1 furo: bolha não faz sentido visual
-
-      const cx = furosDoDominio.reduce((s, f) => s + f.x, 0) / furosDoDominio.length;
-      const cy = furosDoDominio.reduce((s, f) => s + f.y, 0) / furosDoDominio.length;
-      // Raio = maior distância do centroide a um furo + margem
-      const rMax = Math.max(
-        ...furosDoDominio.map((f) => Math.hypot(f.x - cx, f.y - cy))
-      );
-      const r_m = rMax + 1.5; // 1.5m de margem visual
-      return {
-        nome: d,
-        cx,
-        cy,
-        r_m,
-        cor: corDominio(d),
-        n: furosDoDominio.length,
-      };
-    }).filter(Boolean);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dominios, furosArr]);
+  // (movido para antes do empty state — ver bloco logo após os useMemo iniciais)
 
   // ============================================================================
   // 6. Seleção (CP-8a.2): clique seleciona/desseleciona; destaque visual

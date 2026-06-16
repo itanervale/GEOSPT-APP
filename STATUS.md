@@ -281,3 +281,28 @@ capturar pelo menos:
 - **Propagação:** carga estrutural efetiva e A-11 no XLSX, PDFs e auditoria JSON (bloco cargaEstruturalAdmissivel: valor, origem, catálogo, norma, σₑ).
 - Engine: 2 adições aditivas (tabela tensaoAdmissivel_MPa + util.cargaEstruturalNorma_tf). Caminho de cálculo intocado.
 - Validação: 32,84 tf · casamento 45 · geometria 12 · transferência 33 · build OK.
+
+
+## CP-17 — Salvamento automático (autosave) em localStorage
+
+- **Autosave** da obra no localStorage do navegador, com debounce de ~1,5 s após
+  cada alteração. Indicador no topo: "💾 salvando…" → "✓ salvo".
+- **Recuperação ao abrir:** se houver obra salva, o app PERGUNTA se deseja
+  restaurar (Decisão 2). Restaurar carrega sondagens/estacas/parâmetros; os
+  cálculos são refeitos ao abrir a Aba 6.
+- **Payload enxuto (Decisão 3):** salva entrada (sondagens, estacas, parâmetros,
+  domínios, identificação, corte) SEM resultadosCalculo (recalculáveis) — payload
+  pequeno, longe do limite de ~5 MB do localStorage.
+- **Botão "🆕 Novo"** no Header (Decisão 4): limpa estado + autosave, com
+  confirmação se houver dados.
+- **Robustez (Decisão 6):** todo acesso ao localStorage em try/catch. Em janela
+  anônima/storage bloqueado, autosave fica 'off' e o app segue normal; indicador
+  avisa "⚠ autosave indisponível". QuotaExceeded → status 'erro' + aviso.
+- **Versionamento:** grava _schemaVersao; ao carregar, recusa schema de versão
+  diferente (evita crash ao atualizar o app). JSON corrompido → ignora.
+- Limitação: autosave é local ao navegador/máquina; NÃO substitui o export JSON
+  (backup forte e portável). Documentado no manual (5.7.1) e no callout da seção 1.
+- Arquivos novos: src/state/persistenciaObra.js, src/components/RecuperacaoAutosave.jsx.
+  Modificados: ObraProvider.jsx, Header.jsx, App.jsx.
+- Próximo (CP-18): estaca metálica (σₑ=120 MPa).
+- Validação: 32,84 · casamento 45 · geometria 12 · transferência 33 · persistência 12 · build OK.

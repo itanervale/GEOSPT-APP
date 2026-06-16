@@ -23,6 +23,7 @@
 import React from 'react';
 import EngineGuard from '@/components/EngineGuard';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import RecuperacaoAutosave from '@/components/RecuperacaoAutosave';
 import { ObraProvider } from '@/state/ObraProvider';
 import Header from '@/layout/Header';
 import Tabs from '@/layout/Tabs';
@@ -33,6 +34,7 @@ export default function App() {
   return (
     <EngineGuard>
       <ObraProvider>
+        <RecuperacaoAutosave />
         <div className="h-screen flex flex-col bg-slate-50 text-slate-900 overflow-hidden">
           <div className="shrink-0">
             <Header />
