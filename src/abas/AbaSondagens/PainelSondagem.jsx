@@ -116,6 +116,21 @@ export default function PainelSondagem({ nome, sondagem, onRemover, onDuplicar }
     });
   };
 
+  // Repete o solo (e família derivada) da leitura `idx` em todas as leituras
+  // abaixo dela — útil para preencher rápido um trecho homogêneo do furo.
+  const uniformizarAbaixo = (idx) => {
+    atualizarSondagem(nome, (s) => {
+      const arr = [...s.leituras];
+      const solo = arr[idx].solo;
+      const familia = familiaDoSolo(solo);
+      for (let i = idx + 1; i < arr.length; i++) {
+        arr[i] = { ...arr[i], solo, familia };
+      }
+      return { ...s, leituras: arr };
+    });
+    mostrarToast('ok', 'Solo replicado para as leituras abaixo.');
+  };
+
   // Duplica uma leitura: insere uma cópia logo abaixo e renumera as
   // profundidades em sequência (1,2,3,…) para manter a régua consistente.
   const duplicarLeitura = (idx) => {
@@ -454,7 +469,7 @@ export default function PainelSondagem({ nome, sondagem, onRemover, onDuplicar }
                 )}
               </th>
               <th className="px-1.5 py-2 w-20">Família</th>
-              <th className="px-1.5 py-2 w-28"></th>
+              <th className="px-1.5 py-2 w-32"></th>
             </tr>
           </thead>
           <tbody>
@@ -605,6 +620,14 @@ export default function PainelSondagem({ nome, sondagem, onRemover, onDuplicar }
                         title="Duplicar leitura"
                       >
                         ⧉
+                      </button>
+                      <button
+                        onClick={() => uniformizarAbaixo(idx)}
+                        disabled={!l.solo || idx === leituras.length - 1}
+                        className="text-slate-400 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-default text-sm px-0.5"
+                        title="Uniformizar abaixo (repete este solo em todas as leituras abaixo)"
+                      >
+                        ⇊
                       </button>
                       <button
                         onClick={() => removerLeitura(idx)}
