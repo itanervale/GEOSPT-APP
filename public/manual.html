@@ -342,8 +342,14 @@ npm run preview</code></pre>
   <li>Clique em <code>+ Adicionar</code> na barra lateral para criar uma sondagem.</li>
   <li>Selecione uma sondagem na lista para editá-la no painel principal.</li>
   <li>Preencha, para cada furo: nome, cota de topo, profundidade final, critério de paralisação (ex.: impenetrável), nível d'água e as leituras de NSPT metro a metro.</li>
-  <li>Para remover, use o botão de exclusão (com confirmação).</li>
+  <li>Cada leitura tem, à direita da coluna <strong>Família</strong>, um grupo de botões de ação: <code>↑</code> / <code>↓</code> movem os dados (NSPT, solo, família) para a leitura adjacente, mantendo a coluna de profundidade fixa; <code>⧉</code> duplica a leitura logo abaixo; <code>⇊</code> (<strong>uniformizar abaixo</strong>) repete o solo desta leitura em <strong>todas as leituras abaixo dela</strong> na mesma sondagem; <code>✕</code> remove a leitura.</li>
+  <li>Para remover a sondagem inteira, use o botão de exclusão no cabeçalho do painel (com confirmação).</li>
 </ol>
+
+<div class="callout tip">
+  <div class="callout-title">Uniformizar abaixo</div>
+  Em trechos longos e homogêneos (a mesma camada de solo se repetindo por várias leituras), em vez de selecionar o solo linha a linha, defina-o na primeira leitura do trecho e clique em <code>⇊</code>: o solo (e a família derivada) é copiado para todas as leituras abaixo, até o fim da sondagem. O botão fica desabilitado quando a leitura não tem solo selecionado ou é a última do furo. A ação sobrescreve o solo já preenchido nas leituras abaixo — revise antes de aplicar se parte do trecho já tinha sido classificada.
+</div>
 
 <div class="callout info">
   <div class="callout-title">Trecho impenetrável / NSPT acima do limite</div>
