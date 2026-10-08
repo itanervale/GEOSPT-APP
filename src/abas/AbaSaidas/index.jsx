@@ -16,6 +16,7 @@ import * as XLSX from 'xlsx';
 import { useObra } from '@/state/ObraProvider';
 import { gerarWorkbookXLSX } from './gerarWorkbookXLSX';
 import { gerarAuditoriaJSON } from './gerarAuditoriaJSON';
+import { gerarDetalhamentoJSON } from './gerarDetalhamentoJSON';
 import { gerarPDFCompacto } from './gerarPDFCompacto';
 import { gerarPDFCompleto } from './gerarPDFCompleto';
 
@@ -35,6 +36,7 @@ export default function AbaSaidas() {
   const [statusXLSX, setStatusXLSX] = useState({ tipo: 'idle', msg: '' });
   const [statusJSON, setStatusJSON] = useState({ tipo: 'idle', msg: '' });
   const [statusAudit, setStatusAudit] = useState({ tipo: 'idle', msg: '' });
+  const [statusDetal, setStatusDetal] = useState({ tipo: 'idle', msg: '' });
   const [statusPDFc, setStatusPDFc] = useState({ tipo: 'idle', msg: '' });
   const [statusPDFf, setStatusPDFf] = useState({ tipo: 'idle', msg: '' });
 
@@ -98,6 +100,30 @@ export default function AbaSaidas() {
       });
     } catch (e) {
       setStatusAudit({ tipo: 'erro', msg: 'Erro: ' + e.message });
+    }
+  };
+
+  const handleExportDetalhamento = () => {
+    setStatusDetal({ tipo: 'loading', msg: 'Calculando perfis de todas as estacas...' });
+    try {
+      const detalhamento = gerarDetalhamentoJSON(obra, estado.ui);
+      const blob = new Blob([JSON.stringify(detalhamento, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `geospt_detalhamento_${slug}_${dataIso}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setStatusDetal({
+        tipo: 'ok',
+        msg: `Exportação gerada (${detalhamento.estacas.length} estaca(s), ${detalhamento.sondagens.length} sondagem(ns)).`,
+      });
+    } catch (e) {
+      setStatusDetal({ tipo: 'erro', msg: 'Erro: ' + e.message });
     }
   };
 
@@ -244,6 +270,30 @@ export default function AbaSaidas() {
           {statusAudit.msg && (
             <div className={'mt-2 text-xs ' + statusCls(statusAudit)}>
               {statusAudit.msg}
+            </div>
+          )}
+        </div>
+
+        {/* JSON Detalhamento de estacas */}
+        <div className="bg-white border border-slate-300 rounded p-4">
+          <div className="text-lg font-bold text-teal-700 mb-2">
+            🏗️ Detalhamento de estacas
+          </div>
+          <div className="text-xs text-slate-600 mb-3">
+            JSON para o app de detalhamento de estacas (TQS): sondagens brutas,
+            domínios e, por estaca, envoltória, sondagem média, distâncias e cota
+            de ponta sugerida — já calculados. Não reabre no app.
+          </div>
+          <button
+            disabled={!podeExportar || statusDetal.tipo === 'loading'}
+            onClick={handleExportDetalhamento}
+            className="w-full px-3 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors"
+          >
+            Exportar para detalhamento de estacas (JSON)
+          </button>
+          {statusDetal.msg && (
+            <div className={'mt-2 text-xs ' + statusCls(statusDetal)}>
+              {statusDetal.msg}
             </div>
           )}
         </div>

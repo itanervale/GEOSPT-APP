@@ -204,6 +204,17 @@ Exportação dos resultados.
 | **XLSX** | Planilha com memoriais (uma aba por modo de cálculo + uma comparativa) e colunas de auditoria. Abre no Excel/LibreOffice. |
 | **PDF** | Documento formatado, gerado pela função de impressão do navegador (botão "Imprimir / Salvar como PDF"). Versões compacta e completa. |
 | **JSON de auditoria** | Arquivo com todos os dados de entrada e resultados, com hashes de integridade. Serve para reabrir a obra e para rastreabilidade. |
+| **Detalhamento de estacas (JSON)** | Arquivo para o app de detalhamento de estacas do TQS (`geospt_detalhamento_<obra>_<data>.json`, esquema `geospt-detalhamento-estacas` 1.0.0). Não reabre no app. Veja abaixo. |
+
+#### Exportação para detalhamento de estacas
+
+Gerada por `src/abas/AbaSaidas/gerarDetalhamentoJSON.js` (botão na Aba 7). O app consumidor (`TQS-PYTHON\_apps\EstacaEscavada`, função `estaca_geospt.ler_exportacao`) **não calcula geotecnia**: tudo vem pronto do GeoSPT, pelas mesmas funções das Abas 3 e 6 (`prepararPerfilCalculo`, `engine.compatibilizar`, `engine.montarPerfilMedio`, filtro por domínio e `calcularModosDaEstaca` da auditoria); a engine não é alterada. Cotas e profundidades em metros (profundidade da boca do furo, positiva para baixo); campos sem valor saem `null`, listas vazias `[]`.
+
+- `sondagens[]` — dado bruto de todas as sondagens (`nspt_real` preservado, `nspt_calculo` limitado a 50, `cota_m = cotaBoca_m − profundidade_m`, NA em profundidade e cota, coordenadas, `dominioId`).
+- `dominios[]` — `id`, `nome`, `furos`.
+- `estacas[]` — dados da estaca; `furosConsiderados` (domínio da estaca, ou todos); `sondagensPorDistancia` (distância 2D crescente) e `sondagemMaisProxima`; `cotaPontaSugerida_m` por modo (`envoltoria`, `perfil_medio` = 2.2, `por_furo` = furo crítico, `interpolacao`); `avisos`; `perfis.envoltoria` (com `furo` e `nFuros`), `perfis.media` (submodo selecionado em `ui.submodoPerfilMedio`, padrão `2.2_conservador`) e `perfis.mediaPorSubmodo` (2.1, 2.2 e 2.3).
+- Estaca sem coordenadas, sem cota de arrasamento, sem carga prevista ou com domínio vazio **não impede a exportação**: os campos dependentes saem `null` e o motivo vai em `avisos` da estaca. Sem carga prevista, a cota "neutra" mostrada na Aba 6 **não** é exportada como sugestão.
+- Formato completo (contrato com o app de detalhamento): ver o prompt `PROMPT_GEOSPT_exportacao.md` e a seção 5.7.2 do manual.
 
 ---
 
@@ -292,6 +303,7 @@ node test-esm.mjs              # Regressão canônica (caso Balsas → 32,84 tf)
 node test-casamento.mjs        # Casamento de camadas do corte
 node test-geometria-corte.mjs  # Geometria do corte
 node test-transferencia.mjs    # Transferência de carga (AOKI 1979): N(z), σ(z), modelos A/B
+node test-detalhamento.mjs     # Exportação para detalhamento de estacas (Balsas, sem coords/domínio, domínio)
 ```
 
 O **caso Balsas** é a regressão canônica: qualquer mudança que altere o resultado de **32,84 tf** indica quebra.

@@ -193,6 +193,7 @@
   <a href="#s5-6-1" class="l3">5.6.1 Transferência de carga</a>
   <a href="#s5-7"  class="l2">5.7 Aba 7 — Saídas</a>
   <a href="#s5-7-1" class="l3">5.7.1 Salvamento automático</a>
+  <a href="#s5-7-2" class="l3">5.7.2 Exportação para detalhamento de estacas</a>
   <a href="#s6"    class="l1">6. O Corte Esquemático</a>
   <a href="#s6-1"  class="l2">6.1 Montar a seleção</a>
   <a href="#s6-2"  class="l2">6.2 Camadas (toggles)</a>
@@ -626,6 +627,7 @@ npm run preview</code></pre>
     <tr><td><strong>&#x1F4CA; XLSX</strong></td><td>Planilha com memoriais (uma aba por modo de cálculo + uma comparativa) e colunas de auditoria. Abre no Excel/LibreOffice.</td></tr>
     <tr><td><strong>&#x1F4C4; PDF</strong></td><td>Documento formatado em duas versões (compacta e completa), gerado pela função de impressão do navegador. O relatório abre em nova aba — use <strong>"Imprimir / Salvar como PDF"</strong>.</td></tr>
     <tr><td><strong>&#x1F4BE; JSON</strong></td><td>Arquivo com todos os dados de entrada e resultados, com hashes de integridade. É o formato de "obra salva" e serve para rastreabilidade.</td></tr>
+    <tr><td><strong>&#x1F3D7;&#xFE0F; Detalhamento de estacas</strong></td><td>JSON para o app de detalhamento de estacas (TQS): sondagens brutas, domínios e, para cada estaca, envoltória, sondagem média, distâncias e cota de ponta sugerida — tudo já calculado. Não reabre no GeoSPT. Veja a <a href="#s5-7-2">seção 5.7.2</a>.</td></tr>
   </tbody>
 </table>
 </div>
@@ -650,6 +652,41 @@ npm run preview</code></pre>
 <div class="callout warning">
   <div class="callout-title">Autosave não substitui o backup</div>
   Pense no autosave como uma rede de proteção contra acidentes (travamento, recarregar). O <strong>arquivo JSON exportado</strong> continua sendo a sua "obra salva" definitiva — o único formato que você leva para outro computador, arquiva e compartilha.
+</div>
+
+<h4 id="s5-7-2">5.7.2 Exportação para detalhamento de estacas (JSON)</h4>
+<p>O cartão <strong>"Detalhamento de estacas"</strong> da Aba 7 gera o arquivo <code>geospt_detalhamento_&lt;obra&gt;_&lt;AAAA-MM-DD&gt;.json</code>, lido pelo app de detalhamento de estacas escavadas do TQS, que desenha o perfil das sondagens ao lado da estaca. Esse app <strong>não calcula geotecnia</strong>: compatibilização, envoltória, sondagem média, domínio e furo mais próximo vêm prontos do GeoSPT, pelas <strong>mesmas funções</strong> das Abas 3 e 6 — por isso os valores coincidem com o que você vê nessas abas para a mesma estaca. O arquivo <strong>não reabre</strong> no GeoSPT e não altera a obra.</p>
+<ol class="steps">
+  <li>Cadastre sondagens (Aba 2) e estacas (Aba 5). Coordenadas, cota de arrasamento, carga prevista e domínio são opcionais para exportar, mas sem eles os campos dependentes saem <code>null</code>.</li>
+  <li>Na Aba 3/6, escolha o <strong>submodo do perfil médio</strong> (2.1, 2.2 ou 2.3). É ele que vai em <code>media</code>; os três vão sempre em <code>mediaPorSubmodo</code>.</li>
+  <li>Na Aba 7, clique em <code>Exportar para detalhamento de estacas (JSON)</code>.</li>
+</ol>
+
+<p><strong>Esquema:</strong> <code>geospt-detalhamento-estacas</code>, versão <code>1.0.0</code> (independente da versão do arquivo da obra). Unidades: cotas e profundidades em <strong>metros</strong>; profundidade medida a partir da boca do furo, positiva para baixo; cotas no mesmo referencial cadastrado (boca dos furos e arrasamento das estacas); NSPT inteiro. Campos sem valor saem <code>null</code> (nunca omitidos); listas vazias saem <code>[]</code>.</p>
+
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>Bloco</th><th>Conteúdo</th></tr></thead>
+  <tbody>
+    <tr><td><code>_schema</code>, <code>_schemaVersao</code>, <code>_engineVersao</code>, <code>_geradoEm</code></td><td>Identificação do formato, versão da engine e data/hora (UTC).</td></tr>
+    <tr><td><code>obra</code>, <code>referencialCotas</code>, <code>parametros</code>, <code>avisos</code></td><td>Nome, localização, responsável, sistema de coordenadas; janela de compatibilização, submodo do perfil médio e limite de NSPT de cálculo (50); avisos gerais (ex.: sondagens sem coordenadas).</td></tr>
+    <tr><td><code>dominios[]</code></td><td><code>id</code>, <code>nome</code> e lista de furos de cada domínio geotécnico.</td></tr>
+    <tr><td><code>sondagens[]</code></td><td>Dado bruto de todas as sondagens: cota de boca, profundidade final, critério de paralisação, NA (profundidade e cota), coordenadas, <code>dominioId</code> e leituras (<code>profundidade_m</code>, <code>cota_m</code> = boca − profundidade, <code>nspt_real</code> preservado, <code>nspt_calculo</code> limitado a 50, impenetrável, solo, família).</td></tr>
+    <tr><td><code>estacas[]</code></td><td>Tipo, formato, dimensão, cota de arrasamento, carga prevista, coordenadas e domínio; <code>furosConsiderados</code> (furos do domínio da estaca, ou todos se não tiver domínio — como no cálculo de capacidade); <code>sondagensPorDistancia</code> (distância 2D em planta, crescente) e <code>sondagemMaisProxima</code>; <code>cotaPontaSugerida_m</code>; <code>avisos</code>; e <code>perfis</code>.</td></tr>
+    <tr><td><code>estacas[].perfis.envoltoria[]</code></td><td>Envoltória inferior da compatibilização dos furos considerados (mínimo absoluto cota a cota, com solo, família e furo de origem do mesmo furo, como na Aba 3), com <code>nFuros</code> da cota.</td></tr>
+    <tr><td><code>estacas[].perfis.media</code> / <code>mediaPorSubmodo</code></td><td>Sondagem média no submodo selecionado (<code>submodo</code> + <code>camadas</code>) e nos três submodos (2.3 em <code>coesivo</code>, <code>granular</code> e <code>intermediario</code>). Cada camada traz <code>nspt</code>, <code>nspt_real</code>, <code>solo</code>, <code>familia</code>, <code>heterogeneo</code>, <code>soloDetalhe</code> (ex.: "C: Argila Siltosa | G: Areia Siltosa"), <code>nFuros</code> e <code>origem</code>.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout info">
+  <div class="callout-title">Cota de ponta sugerida (<code>cotaPontaSugerida_m</code>)</div>
+  Traz a cota sugerida por modo (<code>envoltoria</code>, <code>perfil_medio</code>, <code>por_furo</code>, <code>interpolacao</code>) — a <strong>mesma da auditoria</strong>: a mais rasa em que Décourt-Quaresma <em>e</em> Aoki-Velloso atendem a carga prevista. O perfil médio usa o submodo 2.2 (conservador); o modo por furo usa o <strong>furo crítico</strong> (menor pior caso). Sai <code>null</code> quando o modo não se aplica (ex.: interpolação sem coordenadas, ou domínio com menos de 3 furos), quando nenhuma cota atende, ou quando a estaca não tem carga prevista ou cota de arrasamento.
+</div>
+
+<div class="callout warning">
+  <div class="callout-title">Estaca incompleta não impede a exportação</div>
+  Estaca sem coordenadas, sem cota de arrasamento, sem carga prevista ou com domínio vazio é exportada normalmente: os campos que dependem disso saem <code>null</code> (ou lista vazia) e o motivo aparece em <code>avisos</code> da estaca. Com o submodo 2.3 selecionado não existe perfil único — <code>media.camadas</code> sai vazio e os ramos ficam em <code>mediaPorSubmodo["2.3_dois_paralelos"]</code>. Se a cota de arrasamento for decimal, o cálculo de capacidade usa <code>Math.floor</code> (registrado em <code>avisos</code>).
 </div>
 
 <!-- 6. CORTE ESQUEMÁTICO -->

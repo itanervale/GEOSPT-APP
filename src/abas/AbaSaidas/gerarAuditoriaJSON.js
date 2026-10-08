@@ -49,7 +49,7 @@ function resumoPerfilUnico(perfil, opcoes, carga) {
 
 // Calcula os modos para uma estaca, retornando o bloco modosCalculados.
 // CP-12c — recebe obra para resolver o filtro de domínio da estaca.
-function calcularModosDaEstaca(estaca, sondagens, params, obra) {
+export function calcularModosDaEstaca(estaca, sondagens, params, obra) {
   const opcoes = construirOpcoesCalculo(estaca, params);
   const carga = estaca.cargaPrevista_tf;
   const modos = {};
