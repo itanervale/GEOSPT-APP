@@ -1474,7 +1474,8 @@ CP-12c; (3) arrasamento decimal — o por furo/interpolação recebiam a cota de
   tratamento de ponta), formato quadrado (A_p/U) e a carga estrutural efetiva do CP-16 (usava a
   tabela antiga). Agora recebe `{ ...construirOpcoesCalculo(estacaCalc, params), janela_m }`.
   Efeito no Balsas sem customização: só na E-04 (pré-moldada), pelo limite estrutural — Q_adm DQ
-  @242 SPT-02 50,00 → 51,10 tf e SPT-05 50,00 → 57,66 tf; cotas sugeridas inalteradas; E-01
+  @242 SPT-02 50,00 → 51,10 tf e SPT-05 50,00 → 57,66 tf (na cota sugerida do SPT-05, 243 m:
+  50,00 → 50,28 tf); cotas sugeridas inalteradas; E-01
   (regressão 32,84) intacta.
 - **Interpolação:** recebia as opções completas mas sem `janela_m` → o por furo interno usava
   0,5 m. Agora recebe a janela da obra.

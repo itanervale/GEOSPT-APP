@@ -99,8 +99,9 @@ Selecionar E-01 (carga 50 tf). Conferir os 4 modos + comparativo.
 - [ ] **Modo 2 (Perfil médio):** submodos 2.1, 2.2, 2.3 selecionáveis; 2.2 → cota 241
 - [ ] **Modo 2.3 (perfis paralelos):** ramos Coesivo/Granular (Intermediário sem dados)
 - [ ] **Modo 3 (Por furo):** 5 furos, SPT-01 → 239 AV, SPT-03 → 243 DQ
-- [ ] **Modo 3, E-04 (pré-moldada):** Q_adm DQ na cota 242 — SPT-02 = 51,10 tf e SPT-05 = 57,66 tf
-      (limite estrutural pela hierarquia do CP-16; antes 50,00)
+- [ ] **Modo 3, E-04 (pré-moldada):** na visão geral (Q_adm DQ na cota sugerida de cada furo),
+      SPT-02 = 51,10 tf (cota 242) e SPT-05 = 50,28 tf (cota 243); no memorial do SPT-05, a linha
+      da cota 242 = 57,66 tf. Limite estrutural pela hierarquia do CP-16 (antes, todos em 50,00)
 - [ ] **Modo 4 (Interpolação):** cota 235 → método "furo_unico_disponivel" SEM NaN
 - [ ] **Comparativo entre modos (6.5):** tabela com pior caso por modo
 - [ ] Testar E-03 (carga 110): TODOS os modos → "nenhuma cota atende ambos"
