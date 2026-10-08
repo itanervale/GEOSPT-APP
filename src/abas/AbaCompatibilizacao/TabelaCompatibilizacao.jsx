@@ -6,6 +6,9 @@
  *   - 1 coluna por sondagem com NSPT (★ se impenetrável)
  *   - Envoltória inferior: NSPT, Furo, Solo
  *   - Família predominante, Média NSPT (uma linha por família quando hetero)
+ *   - Cor (informativa, fora do cálculo): da leitura que deu a envoltória e a
+ *     mais frequente na média — derivadas por domain/cores.js, sem alterar a
+ *     compatibilização
  *
  * Extraído idêntico das linhas 4081-4187 do geospt_app.jsx (artifact original).
  * Pequena mudança: text-xxs removido (não é classe Tailwind padrão), trocado
@@ -14,8 +17,9 @@
 
 import React from 'react';
 import { bgClassPorFamilia } from '@/domain/solos';
+import { coresDaCota } from '@/domain/cores';
 
-export default function TabelaCompatibilizacao({ resultados, nomesSond }) {
+export default function TabelaCompatibilizacao({ resultados, nomesSond, sondagens }) {
   if (!resultados || resultados.length === 0) {
     return (
       <div className="p-4 text-sm text-slate-500">Sem cotas processadas.</div>
@@ -42,13 +46,19 @@ export default function TabelaCompatibilizacao({ resultados, nomesSond }) {
           ))}
           <th
             className="px-1 py-1.5 border-b border-slate-300 bg-orange-50 text-center"
-            colSpan="3"
+            colSpan="4"
           >
             Envoltória inferior
           </th>
           <th className="px-1 py-1.5 border-b border-slate-300 w-20">Família</th>
           <th className="px-1 py-1.5 border-b border-slate-300 text-center w-16">
             Média
+          </th>
+          <th
+            className="px-1 py-1.5 border-b border-slate-300 w-28"
+            title="Cor mais frequente entre os furos da média (texto do laudo)"
+          >
+            Cor (média)
           </th>
         </tr>
         <tr className="text-left text-slate-600 text-[10px] bg-slate-50">
@@ -65,9 +75,12 @@ export default function TabelaCompatibilizacao({ resultados, nomesSond }) {
           <th className="px-1 py-1 border-b border-slate-300 bg-orange-50 w-40">
             Solo (envoltória)
           </th>
+          <th className="px-1 py-1 border-b border-slate-300 bg-orange-50 w-24">
+            Cor
+          </th>
           <th
             className="px-1 py-1 border-b border-slate-300"
-            colSpan="2"
+            colSpan="3"
           ></th>
         </tr>
       </thead>
@@ -77,6 +90,7 @@ export default function TabelaCompatibilizacao({ resultados, nomesSond }) {
             ? 'bg-amber-100'
             : bgClassPorFamilia(r.familiaPred);
           const envNspt = r.envoltoria.nspt;
+          const cores = coresDaCota(r, sondagens || {});
 
           return (
             <tr key={idx} className={'border-t border-slate-200 ' + linhaBg}>
@@ -148,6 +162,13 @@ export default function TabelaCompatibilizacao({ resultados, nomesSond }) {
                 )}
               </td>
 
+              <td
+                className="px-1.5 py-1 bg-orange-50 truncate text-slate-700"
+                title={cores.envoltoria || ''}
+              >
+                {cores.envoltoria || <span className="text-slate-400">—</span>}
+              </td>
+
               {/* Família predominante */}
               <td className="px-1.5 py-1 truncate" title={r.heterogeneo ? 'Heterogênea' : r.familiaPred || ''}>
                 {r.heterogeneo ? (
@@ -180,6 +201,14 @@ export default function TabelaCompatibilizacao({ resultados, nomesSond }) {
                   </div>
                 ) : (
                   r.media.familiaPredominante ?? '—'
+                )}
+              </td>
+              <td
+                className="px-1.5 py-1 truncate text-slate-700"
+                title={cores.detalhe || ''}
+              >
+                {(r.heterogeneo ? cores.detalhe : cores.predominante) || (
+                  <span className="text-slate-400">—</span>
                 )}
               </td>
             </tr>

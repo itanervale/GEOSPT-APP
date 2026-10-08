@@ -16,7 +16,8 @@ extrai um rascunho, o engenheiro valida campo a campo. O JSON nunca é importado
 2. Pedir: *"Extraia as sondagens no formato padrão GeoSPT (FORMATO_EXTRACAO_NSPT)."*
 3. A IA devolve **dois blocos**:
    - **(A) Relatório de conferência** — tabela por furo (cota de topo, NA, critério de
-     paralisação, e os NSPT lidos), com **marcação dos valores de baixa confiança**.
+     paralisação, e os NSPT lidos), com **marcação dos valores de baixa confiança**. Inclua
+     também, por camada, a **descrição do laudo** e a **cor** extraída, para conferência.
    - **(B) JSON** no schema abaixo, pronto para o botão Importar.
 4. **Conferir** o relatório (A) contra o PDF — especialmente os dígitos de NSPT e as cotas.
 5. Só então **Importar** o JSON (B) no app (botão 📥 Importar).
@@ -104,7 +105,7 @@ Campos:
 Uma leitura por metro inteiro, de 1 até a profundidade final.
 
 ```json
-{ "profundidade_m": 1, "nspt_real": 3, "nspt_calculo": 3, "impenetravel": false, "solo": "Areia Silto-Argilosa", "familia": "Granular" }
+{ "profundidade_m": 1, "nspt_real": 3, "nspt_calculo": 3, "impenetravel": false, "solo": "Areia Silto-Argilosa", "familia": "Granular", "cor": "marrom-avermelhada" }
 ```
 
 Campos:
@@ -117,6 +118,26 @@ Campos:
   do laudo para o canônico mais próximo.
 - **`familia`** — derivada do `solo` pela 1ª palavra: **Areia→`"Granular"`**,
   **Silte→`"Intermediário"`**, **Argila→`"Coesivo"`**. Deve ser coerente com o `solo`.
+- **`cor`** — a **coloração** do solo como descrita no laudo (texto livre), ver seção 4.1.
+  `null` se o laudo não informa a cor daquela camada.
+
+### 4.1 Cor do solo (campo `cor`)
+
+A cor **não entra no cálculo**: serve para a obra conferir, em campo, se o solo escavado
+corresponde ao da sondagem. Por isso deve ser fiel ao laudo:
+
+- **Copie a cor do laudo, sem traduzir nem padronizar.** Ex.: "vermelha", "marrom-avermelhada",
+  "variegada (cinza e amarela)", "cinza-escura". Leve só a **cor** — não repita o tipo de solo,
+  a consistência/compacidade ("mole", "compacta") nem a origem ("aterro", "residual").
+- **Mesma grafia em todo o relatório.** Se o laudo escreve "vermelha" numa camada, use
+  exatamente "vermelha" em todas as camadas e furos onde aparece (o app agrupa cores iguais
+  entre furos). Respeite a terminologia do próprio laudo; não troque sinônimos.
+- **Minúsculas**, sem ponto final. Cores compostas como estão no laudo (hífen ou "e").
+- **Repita a cor em todos os metros da camada** — o laudo descreve por camada, o app trabalha
+  metro a metro (igual ao `solo`).
+- **Laudo sem cor** para a camada → `"cor": null` (não invente, não deduza da descrição do
+  solo). Anote no relatório de conferência quais camadas ficaram sem cor.
+- A cor **não influencia** a escolha do `solo` canônico.
 
 ---
 
@@ -205,9 +226,9 @@ dominante e **anote a decisão** no relatório.
         "dominioGeotecnico": null,
         "coordenadas": { "x": 0, "y": 0 },
         "leituras": [
-          { "profundidade_m": 1, "nspt_real": 3, "nspt_calculo": 3, "impenetravel": false, "solo": "Areia Siltosa", "familia": "Granular" },
-          { "profundidade_m": 2, "nspt_real": 5, "nspt_calculo": 5, "impenetravel": false, "solo": "Argila Siltosa", "familia": "Coesivo" },
-          { "profundidade_m": 3, "nspt_real": 8, "nspt_calculo": 8, "impenetravel": false, "solo": "Argila Siltosa", "familia": "Coesivo" }
+          { "profundidade_m": 1, "nspt_real": 3, "nspt_calculo": 3, "impenetravel": false, "solo": "Areia Siltosa", "familia": "Granular", "cor": "marrom" },
+          { "profundidade_m": 2, "nspt_real": 5, "nspt_calculo": 5, "impenetravel": false, "solo": "Argila Siltosa", "familia": "Coesivo", "cor": "vermelha" },
+          { "profundidade_m": 3, "nspt_real": 8, "nspt_calculo": 8, "impenetravel": false, "solo": "Argila Siltosa", "familia": "Coesivo", "cor": "vermelha" }
         ]
       },
       "SPT-02": {
@@ -218,8 +239,8 @@ dominante e **anote a decisão** no relatório.
         "dominioGeotecnico": null,
         "coordenadas": { "x": 25, "y": 0 },
         "leituras": [
-          { "profundidade_m": 1, "nspt_real": 4, "nspt_calculo": 4, "impenetravel": false, "solo": "Areia Siltosa", "familia": "Granular" },
-          { "profundidade_m": 2, "nspt_real": 52, "nspt_calculo": 50, "impenetravel": true, "solo": "Argila Siltosa", "familia": "Coesivo" }
+          { "profundidade_m": 1, "nspt_real": 4, "nspt_calculo": 4, "impenetravel": false, "solo": "Areia Siltosa", "familia": "Granular", "cor": "marrom" },
+          { "profundidade_m": 2, "nspt_real": 52, "nspt_calculo": 50, "impenetravel": true, "solo": "Argila Siltosa", "familia": "Coesivo", "cor": null }
         ]
       }
     },
@@ -232,7 +253,7 @@ dominante e **anote a decisão** no relatório.
 ```
 
 (No exemplo, SPT-02 ilustra a regra do impenetrável: `nspt_real: 52`, `nspt_calculo: 50`,
-`impenetravel: true`.)
+`impenetravel: true`; e a leitura de 2 m sem cor no laudo, com `"cor": null`.)
 
 ---
 
@@ -243,6 +264,8 @@ dominante e **anote a decisão** no relatório.
 - [ ] Número de leituras = profundidade final (uma por metro).
 - [ ] Todos os `solo` estão na tabela canônica (seção 7).
 - [ ] `familia` coerente com a 1ª palavra do `solo`.
+- [ ] `cor` copiada do laudo, com a mesma grafia em todas as camadas/furos; `null` onde o
+      laudo não informa.
 - [ ] Metros impenetráveis: `nspt_calculo` ≤ 50 e `impenetravel: true`.
 - [ ] Valores marcados como "baixa confiança" foram conferidos no PDF.
 - [ ] NA em profundidade (m), não cota; `null` se seco/não registrado.

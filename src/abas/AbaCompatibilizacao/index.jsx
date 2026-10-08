@@ -257,6 +257,7 @@ export default function AbaCompatibilizacao() {
           <TabelaCompatibilizacao
             resultados={resultados}
             nomesSond={nomesSond}
+            sondagens={sondagensVisiveis}
           />
         </div>
 

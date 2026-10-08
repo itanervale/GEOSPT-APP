@@ -79,6 +79,7 @@ export default function PainelSondagem({ nome, sondagem, onRemover, onDuplicar }
           impenetravel: false,
           solo: '',
           familia: null,
+          cor: null,
         },
       ],
     }));
@@ -116,19 +117,20 @@ export default function PainelSondagem({ nome, sondagem, onRemover, onDuplicar }
     });
   };
 
-  // Repete o solo (e família derivada) da leitura `idx` em todas as leituras
-  // abaixo dela — útil para preencher rápido um trecho homogêneo do furo.
+  // Repete o solo (e família derivada) e a cor da leitura `idx` em todas as
+  // leituras abaixo dela — útil para preencher rápido um trecho homogêneo do furo.
   const uniformizarAbaixo = (idx) => {
     atualizarSondagem(nome, (s) => {
       const arr = [...s.leituras];
       const solo = arr[idx].solo;
       const familia = familiaDoSolo(solo);
+      const cor = arr[idx].cor ?? null;
       for (let i = idx + 1; i < arr.length; i++) {
-        arr[i] = { ...arr[i], solo, familia };
+        arr[i] = { ...arr[i], solo, familia, cor };
       }
       return { ...s, leituras: arr };
     });
-    mostrarToast('ok', 'Solo replicado para as leituras abaixo.');
+    mostrarToast('ok', 'Solo e cor replicados para as leituras abaixo.');
   };
 
   // Duplica uma leitura: insere uma cópia logo abaixo e renumera as
@@ -468,6 +470,9 @@ export default function PainelSondagem({ nome, sondagem, onRemover, onDuplicar }
                   <span className="text-slate-500 normal-case">(código)</span>
                 )}
               </th>
+              <th className="px-1.5 py-2 w-28" title="Cor do solo como descrita no laudo (texto livre; não entra no cálculo)">
+                Cor
+              </th>
               <th className="px-1.5 py-2 w-20">Família</th>
               <th className="px-1.5 py-2 w-32"></th>
             </tr>
@@ -588,6 +593,24 @@ export default function PainelSondagem({ nome, sondagem, onRemover, onDuplicar }
                       />
                     )}
                   </td>
+                  <td className="px-1 py-1">
+                    <input
+                      type="text"
+                      value={l.cor ?? ''}
+                      onChange={(e) =>
+                        atualizarLeitura(idx, {
+                          cor: e.target.value === '' ? null : e.target.value,
+                        })
+                      }
+                      onBlur={(e) => {
+                        const v = e.target.value.replace(/\s+/g, ' ').trim();
+                        if (v !== (l.cor ?? '')) atualizarLeitura(idx, { cor: v || null });
+                      }}
+                      placeholder="—"
+                      title={l.cor || 'Cor do solo (laudo)'}
+                      className={inputCls + ' w-full text-xs'}
+                    />
+                  </td>
                   <td
                     className="px-1.5 py-1 text-xs text-slate-700 truncate"
                     title={familia || ''}
@@ -625,7 +648,7 @@ export default function PainelSondagem({ nome, sondagem, onRemover, onDuplicar }
                         onClick={() => uniformizarAbaixo(idx)}
                         disabled={!l.solo || idx === leituras.length - 1}
                         className="text-slate-400 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-default text-sm px-0.5"
-                        title="Uniformizar abaixo (repete este solo em todas as leituras abaixo)"
+                        title="Uniformizar abaixo (repete este solo e esta cor em todas as leituras abaixo)"
                       >
                         ⇊
                       </button>

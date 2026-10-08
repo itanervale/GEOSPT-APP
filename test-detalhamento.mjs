@@ -2,7 +2,9 @@
  * test-detalhamento.mjs — valida a exportação para detalhamento de estacas.
  *
  * Cobre: (1) Balsas completo; (2) obra sem coordenadas e sem domínio;
- * (3) domínio com subconjunto de furos; (4) domínio vazio / inválido.
+ * (3) domínio com subconjunto de furos; (4) domínio vazio / inválido;
+ * (5) cor do solo (esquema 1.1.0): envoltória, média, heterogênea, sem cor,
+ *     grafias equivalentes, e a cor não altera nenhum valor numérico.
  * Confere que envoltória, média e cotas sugeridas BATEM com as Abas 3 e 6
  * (mesmas funções, calculadas de forma independente aqui).
  *
@@ -29,6 +31,7 @@ await build({
       export { prepararPerfilCalculo } from '@/abas/AbaCapacidade/prepararPerfilCalculo';
       export { construirOpcoesCalculo, encontrarCotaSugeridaConservadora } from '@/abas/AbaCapacidade/calculoHelpers';
       export { GeoSPT } from '@/engine/geospt-engine';
+      export { resumirCores, chaveCor } from '@/domain/cores';
     `,
     resolveDir: resolve('.'),
     loader: 'js',
@@ -49,6 +52,8 @@ const {
   construirOpcoesCalculo,
   encontrarCotaSugeridaConservadora,
   GeoSPT,
+  resumirCores,
+  chaveCor,
 } = M;
 
 let ok = 0;
@@ -80,9 +85,9 @@ const obraBalsas = () => ({
 
 const CHAVES_ESTACA = ['nome', 'tipoEstaca', 'formato', 'dimensao_m', 'cotaArrasamento_m', 'cargaPrevista_tf', 'coordenadas', 'dominioId', 'dominioNome', 'furosConsiderados', 'sondagensPorDistancia', 'sondagemMaisProxima', 'cotaPontaSugerida_m', 'avisos', 'perfis'];
 const CHAVES_SONDAGEM = ['nome', 'cotaBoca_m', 'profundidadeFinal_m', 'criterioParalisacao', 'naInicial_m', 'naFinal_m', 'naInicialCota_m', 'naFinalCota_m', 'coordenadas', 'dominioId', 'leituras'];
-const CHAVES_LEITURA = ['profundidade_m', 'cota_m', 'nspt_real', 'nspt_calculo', 'impenetravel', 'solo', 'familia'];
-const CHAVES_ENV = ['cota_m', 'nspt', 'nspt_real', 'impenetravel', 'solo', 'familia', 'furo', 'nFuros'];
-const CHAVES_MEDIA = ['cota_m', 'nspt', 'nspt_real', 'solo', 'familia', 'heterogeneo', 'soloDetalhe', 'nFuros', 'origem'];
+const CHAVES_LEITURA = ['profundidade_m', 'cota_m', 'nspt_real', 'nspt_calculo', 'impenetravel', 'solo', 'familia', 'cor'];
+const CHAVES_ENV = ['cota_m', 'nspt', 'nspt_real', 'impenetravel', 'solo', 'familia', 'furo', 'nFuros', 'cor'];
+const CHAVES_MEDIA = ['cota_m', 'nspt', 'nspt_real', 'solo', 'familia', 'heterogeneo', 'soloDetalhe', 'nFuros', 'origem', 'cor', 'corDetalhe'];
 const tem = (o, chaves) => chaves.every((k) => Object.prototype.hasOwnProperty.call(o, k));
 
 function validarEstrutura(rotulo, j) {
@@ -90,7 +95,7 @@ function validarEstrutura(rotulo, j) {
   const s = JSON.stringify(j);
   t(rotulo + ': serializa', typeof s === 'string' && s.length > 10);
   const volta = JSON.parse(s);
-  t(rotulo + ': _schema', volta._schema === DETALHAMENTO_SCHEMA && volta._schemaVersao === DETALHAMENTO_SCHEMA_VERSAO && volta._schemaVersao === '1.0.0');
+  t(rotulo + ': _schema', volta._schema === DETALHAMENTO_SCHEMA && volta._schemaVersao === DETALHAMENTO_SCHEMA_VERSAO && volta._schemaVersao === '1.1.0');
   t(rotulo + ': _engineVersao', volta._engineVersao === GeoSPT.versao);
   t(rotulo + ': _geradoEm ISO', !Number.isNaN(Date.parse(volta._geradoEm)));
   t(rotulo + ': blocos raiz', tem(volta, ['obra', 'referencialCotas', 'parametros', 'avisos', 'dominios', 'sondagens', 'estacas']));
@@ -106,6 +111,8 @@ function validarEstrutura(rotulo, j) {
     t(rotulo + ': estaca ' + e.nome + ' cotaPontaSugerida', tem(e.cotaPontaSugerida_m, ['envoltoria', 'perfil_medio', 'por_furo', 'interpolacao']));
     t(rotulo + ': estaca ' + e.nome + ' perfis', tem(e.perfis, ['envoltoria', 'media', 'mediaPorSubmodo']) && tem(e.perfis.media, ['submodo', 'camadas']) && tem(e.perfis.mediaPorSubmodo, ['2.1_predominante', '2.2_conservador', '2.3_dois_paralelos']) && tem(e.perfis.mediaPorSubmodo['2.3_dois_paralelos'], ['coesivo', 'granular', 'intermediario']));
     t(rotulo + ': estaca ' + e.nome + ' camadas', e.perfis.envoltoria.every((c) => tem(c, CHAVES_ENV)) && e.perfis.media.camadas.every((c) => tem(c, CHAVES_MEDIA)));
+    const ramos23 = e.perfis.mediaPorSubmodo['2.3_dois_paralelos'];
+    t(rotulo + ': estaca ' + e.nome + ' camadas 2.1/2.3', e.perfis.mediaPorSubmodo['2.1_predominante'].every((c) => tem(c, CHAVES_MEDIA)) && ['coesivo', 'granular', 'intermediario'].every((k) => ramos23[k].every((c) => tem(c, CHAVES_MEDIA))));
   });
 }
 
@@ -300,6 +307,82 @@ function validarEstrutura(rotulo, j) {
     const e2 = j.estacas[1];
     t('domínio inválido: aviso + todos os furos', e2.avisos.some((a) => /não existe/.test(a)) && e2.furosConsiderados.length === 5);
   }
+}
+
+/* ============================ 5) COR DO SOLO ============================ */
+{
+  // Sem cor (Balsas não tem): todos os campos de cor saem null.
+  const jSem = gerarDetalhamentoJSON(obraBalsas(), {});
+  t('sem cor: leituras null', jSem.sondagens.every((s) => s.leituras.every((l) => l.cor === null)));
+  t('sem cor: camadas null', jSem.estacas.every((e) => e.perfis.envoltoria.every((c) => c.cor === null) && e.perfis.media.camadas.every((c) => c.cor === null && c.corDetalhe === null)));
+
+  // Cores por furo e família. Grafias equivalentes variando em maiúscula/acento/espaço.
+  const corDe = (furo, l) => {
+    if (furo === 'SPT-04' && l.profundidade_m <= 2) return null; // laudo sem cor
+    if (l.familia === 'Granular') return furo === 'SPT-01' ? '  Amarela ' : 'amarela';
+    if (l.familia === 'Coesivo') return furo === 'SPT-02' ? 'cinza' : furo === 'SPT-01' ? 'Vermélha' : 'vermelha';
+    return 'marrom';
+  };
+  const obraCor = obraBalsas();
+  Object.entries(obraCor.sondagens).forEach(([n, s]) => s.leituras.forEach((l) => (l.cor = corDe(n, l))));
+  const j = gerarDetalhamentoJSON(obraCor, { submodoPerfilMedio: '2.2_conservador' });
+  validarEstrutura('Cor', j);
+
+  // Leitura bruta: texto preservado (só espaços colapsados)
+  const l1 = j.sondagens.find((s) => s.nome === 'SPT-01').leituras[0];
+  t('cor: leitura preserva grafia do laudo', l1.cor === 'Amarela', l1.cor);
+
+  // A cor não altera nenhum número: perfis idênticos ao Balsas sem cor, removendo cor/corDetalhe
+  const semCor = (e) => JSON.stringify(e.perfis, (k, v) => (k === 'cor' || k === 'corDetalhe' ? undefined : v));
+  t('cor: não altera envoltória/média/cotas', j.estacas.every((e, i) => semCor(e) === semCor(jSem.estacas[i]) && JSON.stringify(e.cotaPontaSugerida_m) === JSON.stringify(jSem.estacas[i].cotaPontaSugerida_m)));
+
+  // Envoltória: cor da MESMA leitura (furo + profundidade) que deu o NSPT mínimo
+  const compat = GeoSPT.engine.compatibilizar(obraCor.sondagens, { janela_m: 0.5 });
+  const e1 = j.estacas.find((e) => e.nome === 'E-01');
+  t(
+    'cor: envoltória = cor da leitura do furo de origem',
+    e1.perfis.envoltoria.every((c) => {
+      const r = compat.resultados.find((x) => x.cotaRef_m === c.cota_m);
+      const prof = r.profPorSondagem_m[c.furo];
+      const l = obraCor.sondagens[c.furo].leituras.find((x) => x.profundidade_m === prof);
+      const esperado = l.cor == null ? null : l.cor.replace(/\s+/g, ' ').trim();
+      return c.cor === esperado;
+    })
+  );
+
+  // Média em cota homogênea coesiva: 'Vermélha' (SPT-01) ≡ 'vermelha' (agrupadas); SPT-02 'cinza'
+  const homog = e1.perfis.media.camadas.filter((c) => !c.heterogeneo && c.familia === 'Coesivo');
+  t('cor: existem cotas homogêneas coesivas', homog.length > 0);
+  homog.forEach((c) => {
+    const r = compat.resultados.find((x) => x.cotaRef_m === c.cota_m);
+    const furos = Object.keys(r.nsptPorSondagem).filter((n) => r.nsptPorSondagem[n] != null && r.familiaPorSondagem[n] === 'Coesivo');
+    const cores = furos.map((n) => corDe(n, obraCor.sondagens[n].leituras.find((x) => x.profundidade_m === r.profPorSondagem_m[n])));
+    const nVerm = cores.filter((x) => x && chaveCor(x) === 'vermelha').length;
+    const nCinza = cores.filter((x) => x === 'cinza').length;
+    const esperadaChave = nVerm === 0 && nCinza === 0 ? null : nVerm >= nCinza ? (nVerm === nCinza ? chaveCor(cores.find((x) => x != null)) : 'vermelha') : 'cinza';
+    t('cor: média cota ' + c.cota_m + ' = mais frequente', chaveCor(c.cor) === esperadaChave, c.cor + ' / ' + cores.join(','));
+    if (nVerm > 0 && nCinza > 0) {
+      t('cor: média cota ' + c.cota_m + ' detalhe com contagem', c.corDetalhe.includes('(' + nVerm + ')') && c.corDetalhe.includes('cinza (' + nCinza + ')'), c.corDetalhe);
+    }
+  });
+
+  // Média heterogênea (cota 239 de Balsas): corDetalhe por família, cor = família escolhida pelo 2.2
+  const c239 = e1.perfis.media.camadas.find((c) => c.cota_m === 239);
+  t('cor: cota 239 heterogênea — corDetalhe "C: … | G: …"', !!c239 && c239.heterogeneo && /C: .+ \| G: .+/.test(c239.corDetalhe), c239 && c239.corDetalhe);
+  const chaveEsperada239 = c239 && c239.familia === 'Granular' ? 'amarela' : null;
+  t('cor: cota 239 — cor da família escolhida pelo 2.2', !!c239 && c239.cor != null && (chaveEsperada239 == null || chaveCor(c239.cor) === chaveEsperada239), c239 && c239.familia + ' ' + c239.cor);
+
+  // 2.3: cada ramo leva a cor da própria família
+  const r23 = e1.perfis.mediaPorSubmodo['2.3_dois_paralelos'];
+  t('cor: ramo granular do 2.3 = amarela', r23.granular.length > 0 && r23.granular.every((c) => c.cor == null || chaveCor(c.cor) === 'amarela'));
+  t('cor: ramo coesivo do 2.3 = vermelha/cinza', r23.coesivo.length > 0 && r23.coesivo.every((c) => c.cor == null || ['vermelha', 'cinza'].includes(chaveCor(c.cor))));
+
+  // Unidades do helper
+  const rc = resumirCores(['vermelha', 'Vermelha ', 'cinza', null, '', 'vermelha']);
+  t('resumirCores: moda e detalhe', rc.cor === 'vermelha' && rc.detalhe === 'vermelha (3) | cinza (1)', JSON.stringify(rc));
+  t('resumirCores: vazio', resumirCores([null, '  ']).cor === null && resumirCores([]).detalhe === null);
+  t('resumirCores: empate → a primeira que apareceu', resumirCores(['cinza', 'vermelha']).cor === 'cinza');
+  t('chaveCor: acento/maiúscula/espaços', chaveCor('  Vermélha   Escura ') === 'vermelha escura');
 }
 
 rmSync(dirTmp, { recursive: true, force: true });

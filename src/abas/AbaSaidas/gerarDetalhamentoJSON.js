@@ -3,8 +3,9 @@
  *
  * Gera o arquivo lido por `estaca_geospt.ler_exportacao` (TQS-PYTHON, app
  * EstacaEscavada), que desenha o perfil das sondagens ao lado da estaca.
- * Esquema próprio: `geospt-detalhamento-estacas`, versão 1.0.0 — independente
- * do SCHEMA_VERSAO da obra.
+ * Esquema próprio: `geospt-detalhamento-estacas` — independente do
+ * SCHEMA_VERSAO da obra. 1.1.0 acrescenta a cor do solo (texto do laudo,
+ * informativa): `cor` nas leituras e nas camadas, `corDetalhe` na média.
  *
  * O app consumidor NÃO calcula geotecnia: compatibilização, envoltória,
  * sondagem média, domínio e furo mais próximo saem prontos daqui, pelas mesmas
@@ -21,10 +22,11 @@ import { GeoSPT } from '@/engine/geospt-engine';
 import { prepararPerfilCalculo } from '@/abas/AbaCapacidade/prepararPerfilCalculo';
 import { resolverFurosParaCalculo, furoParaDominio } from '@/state/dominiosHelper';
 import { formatoDe, dimensaoDe } from '@/domain/estacas';
+import { coresDaCota, limparCor } from '@/domain/cores';
 import { calcularModosDaEstaca } from './gerarAuditoriaJSON';
 
 export const DETALHAMENTO_SCHEMA = 'geospt-detalhamento-estacas';
-export const DETALHAMENTO_SCHEMA_VERSAO = '1.0.0';
+export const DETALHAMENTO_SCHEMA_VERSAO = '1.1.0';
 
 const SUBMODO_PADRAO = '2.2_conservador';
 const SUBMODOS = ['2.1_predominante', '2.2_conservador', '2.3_dois_paralelos'];
@@ -68,20 +70,25 @@ function montarSondagem(nome, s, obra) {
       impenetravel: !!l.impenetravel,
       solo: txt(l.solo),
       familia: txt(l.familia),
+      cor: limparCor(l.cor),
     })),
   };
 }
 
 // ----- perfis por estaca -----------------------------------------------------
-// Índice cota → linha da compatibilização (nFuros, heterogeneo, soloPred).
-function indexarCompat(compat) {
+// Índice cota → { r: linha da compatibilização (nFuros, heterogeneo, soloPred),
+// cores: cores da cota (domain/cores, derivadas sem alterar a compatibilização) }.
+function indexarCompat(compat, sondagens) {
   const m = new Map();
-  ((compat && compat.resultados) || []).forEach((r) => m.set(r.cotaRef_m, r));
+  ((compat && compat.resultados) || []).forEach((r) =>
+    m.set(r.cotaRef_m, { r, cores: coresDaCota(r, sondagens) })
+  );
   return m;
 }
 
 function camadaMedia(c, idx) {
-  const cr = idx.get(c.cota_m);
+  const linha = idx.get(c.cota_m);
+  const cr = linha ? linha.r : null;
   return {
     cota_m: c.cota_m,
     nspt: num(c.nspt),
@@ -92,6 +99,10 @@ function camadaMedia(c, idx) {
     soloDetalhe: cr ? txt(cr.soloPred) : txt(c.solo),
     nFuros: cr ? cr.nFuros : null,
     origem: txt(c.origemFuro),
+    // Cor mais frequente entre os furos da família desta camada (em cota
+    // heterogênea, a família escolhida pelo submodo / o ramo do 2.3).
+    cor: linha ? linha.cores.porFamilia[c.familia]?.cor ?? null : null,
+    corDetalhe: linha ? linha.cores.detalhe : null,
   };
 }
 
@@ -105,7 +116,7 @@ function perfilEnvoltoria(estaca, filtro, params) {
     filtroDominio: filtro,
   });
   if (r.erro || !r.compatibilizacao) return { erro: r.erro || 'sem compatibilização', camadas: [] };
-  const idx = indexarCompat(r.compatibilizacao);
+  const idx = indexarCompat(r.compatibilizacao, filtro.sondagens);
   const camadas = (r.perfilParaCalculo || []).map((c) => ({
     cota_m: c.cota_m,
     nspt: num(c.nspt),
@@ -114,7 +125,9 @@ function perfilEnvoltoria(estaca, filtro, params) {
     solo: txt(c.solo),
     familia: txt(c.familia),
     furo: txt(c.origemFuro),
-    nFuros: idx.get(c.cota_m)?.nFuros ?? null,
+    nFuros: idx.get(c.cota_m)?.r.nFuros ?? null,
+    // Cor da mesma leitura (mesmo furo) que deu o NSPT mínimo.
+    cor: idx.get(c.cota_m)?.cores.envoltoria ?? null,
   }));
   return { camadas };
 }
@@ -130,7 +143,7 @@ function perfilMedio(estaca, filtro, params, submodo) {
     filtroDominio: filtro,
   });
   if (r.erro) return { erro: r.erro };
-  const idx = indexarCompat(r.compatibilizacao);
+  const idx = indexarCompat(r.compatibilizacao, filtro.sondagens);
   if (submodo === '2.3_dois_paralelos') {
     const mapa = (arr) => (arr || []).map((c) => camadaMedia(c, idx));
     return {

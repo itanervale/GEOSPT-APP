@@ -343,13 +343,14 @@ npm run preview</code></pre>
   <li>Clique em <code>+ Adicionar</code> na barra lateral para criar uma sondagem.</li>
   <li>Selecione uma sondagem na lista para editá-la no painel principal.</li>
   <li>Preencha, para cada furo: nome, cota de topo, profundidade final, critério de paralisação (ex.: impenetrável), nível d'água e as leituras de NSPT metro a metro.</li>
-  <li>Cada leitura tem, à direita da coluna <strong>Família</strong>, um grupo de botões de ação: <code>↑</code> / <code>↓</code> movem os dados (NSPT, solo, família) para a leitura adjacente, mantendo a coluna de profundidade fixa; <code>⧉</code> duplica a leitura logo abaixo; <code>⇊</code> (<strong>uniformizar abaixo</strong>) repete o solo desta leitura em <strong>todas as leituras abaixo dela</strong> na mesma sondagem; <code>✕</code> remove a leitura.</li>
+  <li>Na coluna <strong>Cor</strong>, ao lado de Solo, digite a coloração do solo como descrita no laudo (texto livre, ex.: "vermelha", "variegada cinza e amarela"). É opcional e <strong>não entra no cálculo</strong>: serve para a obra conferir em campo se o solo escavado corresponde ao da sondagem.</li>
+  <li>Cada leitura tem, à direita da coluna <strong>Família</strong>, um grupo de botões de ação: <code>↑</code> / <code>↓</code> movem os dados (NSPT, solo, família) para a leitura adjacente, mantendo a coluna de profundidade fixa; <code>⧉</code> duplica a leitura logo abaixo; <code>⇊</code> (<strong>uniformizar abaixo</strong>) repete o solo e a cor desta leitura em <strong>todas as leituras abaixo dela</strong> na mesma sondagem; <code>✕</code> remove a leitura.</li>
   <li>Para remover a sondagem inteira, use o botão de exclusão no cabeçalho do painel (com confirmação).</li>
 </ol>
 
 <div class="callout tip">
   <div class="callout-title">Uniformizar abaixo</div>
-  Em trechos longos e homogêneos (a mesma camada de solo se repetindo por várias leituras), em vez de selecionar o solo linha a linha, defina-o na primeira leitura do trecho e clique em <code>⇊</code>: o solo (e a família derivada) é copiado para todas as leituras abaixo, até o fim da sondagem. O botão fica desabilitado quando a leitura não tem solo selecionado ou é a última do furo. A ação sobrescreve o solo já preenchido nas leituras abaixo — revise antes de aplicar se parte do trecho já tinha sido classificada.
+  Em trechos longos e homogêneos (a mesma camada de solo se repetindo por várias leituras), em vez de selecionar o solo linha a linha, defina-o na primeira leitura do trecho e clique em <code>⇊</code>: o solo (e a família derivada) e a cor são copiados para todas as leituras abaixo, até o fim da sondagem. O botão fica desabilitado quando a leitura não tem solo selecionado ou é a última do furo. A ação sobrescreve o solo e a cor já preenchidos nas leituras abaixo (cor vazia também é copiada, apagando a de baixo) — revise antes de aplicar se parte do trecho já tinha sido classificada.
 </div>
 
 <div class="callout info">
@@ -396,6 +397,7 @@ npm run preview</code></pre>
   <li><strong>Uma leitura por metro inteiro</strong> de cada furo (profundidade, NSPT, solo e família);</li>
   <li><strong>Regra do impenetrável / NSPT &gt; 50:</strong> o arquivo guarda o <strong>valor real medido</strong> (para auditoria) e usa <strong>50</strong> no cálculo, marcando o trecho como impenetrável — coerente com o que a Aba 2 já faz na digitação manual;</li>
   <li><strong>Solo canônico:</strong> cada camada usa um dos <strong>15 nomes de solo</strong> padronizados, e a <strong>família</strong> é derivada da 1ª palavra (Areia → Granular, Silte → Intermediário, Argila → Coesivo).</li>
+  <li><strong>Cor:</strong> a coloração de cada camada, copiada do laudo como está (sem padronizar), com a mesma grafia em todo o relatório e repetida em todos os metros da camada; <code>null</code> onde o laudo não informa. Vai para a coluna <strong>Cor</strong> da Aba 2 e não influencia a escolha do solo canônico.</li>
 </ul>
 <p>O detalhe completo — schema raiz, campos de cada furo, tratamento de casos difíceis (PDF escaneado, cota ausente) e a tabela dos 15 solos canônicos — está no próprio <code>FORMATO_EXTRACAO_NSPT.md</code>. Abra-o para conferir antes de importar.</p>
 
@@ -417,7 +419,8 @@ npm run preview</code></pre>
   <li><strong>Janela de compatibilização</strong> — um controle deslizante define a tolerância de agrupamento das cotas. A alteração fica em rascunho até você confirmar;</li>
   <li><strong>Seletor de domínio</strong> — filtra os furos por domínio geotécnico (ver Aba 4);</li>
   <li><strong>Botão <code>Recalcular</code></strong> — aplica os ajustes e refaz a compatibilização;</li>
-  <li><strong>Layout em duas colunas</strong> (em telas largas): tabela densa de valores à esquerda e perfil em SVG à direita.</li>
+  <li><strong>Layout em duas colunas</strong> (em telas largas): tabela densa de valores à esquerda e perfil em SVG à direita;</li>
+  <li><strong>Cores</strong> (informativas, não alteram a compatibilização): na envoltória, a cor da <strong>mesma leitura do mesmo furo</strong> que deu o NSPT mínimo; em <strong>Cor (média)</strong>, a cor mais frequente entre os furos que entram na média da família predominante (furos sem cor são ignorados; grafias que só diferem em maiúsculas, acentos ou espaços contam como a mesma cor). Em cota heterogênea, uma cor por família ("C: vermelha | G: amarela"). Passe o mouse para ver todas as cores da cota com a contagem.</li>
 </ul>
 <p>Se houver menos de 2 sondagens, a aba exibe um estado vazio orientando o cadastro.</p>
 
@@ -662,7 +665,7 @@ npm run preview</code></pre>
   <li>Na Aba 7, clique em <code>Exportar para detalhamento de estacas (JSON)</code>.</li>
 </ol>
 
-<p><strong>Esquema:</strong> <code>geospt-detalhamento-estacas</code>, versão <code>1.0.0</code> (independente da versão do arquivo da obra). Unidades: cotas e profundidades em <strong>metros</strong>; profundidade medida a partir da boca do furo, positiva para baixo; cotas no mesmo referencial cadastrado (boca dos furos e arrasamento das estacas); NSPT inteiro. Campos sem valor saem <code>null</code> (nunca omitidos); listas vazias saem <code>[]</code>.</p>
+<p><strong>Esquema:</strong> <code>geospt-detalhamento-estacas</code>, versão <code>1.1.0</code> (independente da versão do arquivo da obra; a 1.1.0 acrescentou a cor do solo). Unidades: cotas e profundidades em <strong>metros</strong>; profundidade medida a partir da boca do furo, positiva para baixo; cotas no mesmo referencial cadastrado (boca dos furos e arrasamento das estacas); NSPT inteiro. Campos sem valor saem <code>null</code> (nunca omitidos); listas vazias saem <code>[]</code>.</p>
 
 <div class="tbl-wrap">
 <table>
@@ -671,10 +674,10 @@ npm run preview</code></pre>
     <tr><td><code>_schema</code>, <code>_schemaVersao</code>, <code>_engineVersao</code>, <code>_geradoEm</code></td><td>Identificação do formato, versão da engine e data/hora (UTC).</td></tr>
     <tr><td><code>obra</code>, <code>referencialCotas</code>, <code>parametros</code>, <code>avisos</code></td><td>Nome, localização, responsável, sistema de coordenadas; janela de compatibilização, submodo do perfil médio e limite de NSPT de cálculo (50); avisos gerais (ex.: sondagens sem coordenadas).</td></tr>
     <tr><td><code>dominios[]</code></td><td><code>id</code>, <code>nome</code> e lista de furos de cada domínio geotécnico.</td></tr>
-    <tr><td><code>sondagens[]</code></td><td>Dado bruto de todas as sondagens: cota de boca, profundidade final, critério de paralisação, NA (profundidade e cota), coordenadas, <code>dominioId</code> e leituras (<code>profundidade_m</code>, <code>cota_m</code> = boca − profundidade, <code>nspt_real</code> preservado, <code>nspt_calculo</code> limitado a 50, impenetrável, solo, família).</td></tr>
+    <tr><td><code>sondagens[]</code></td><td>Dado bruto de todas as sondagens: cota de boca, profundidade final, critério de paralisação, NA (profundidade e cota), coordenadas, <code>dominioId</code> e leituras (<code>profundidade_m</code>, <code>cota_m</code> = boca − profundidade, <code>nspt_real</code> preservado, <code>nspt_calculo</code> limitado a 50, impenetrável, solo, família, <code>cor</code>).</td></tr>
     <tr><td><code>estacas[]</code></td><td>Tipo, formato, dimensão, cota de arrasamento, carga prevista, coordenadas e domínio; <code>furosConsiderados</code> (furos do domínio da estaca, ou todos se não tiver domínio — como no cálculo de capacidade); <code>sondagensPorDistancia</code> (distância 2D em planta, crescente) e <code>sondagemMaisProxima</code>; <code>cotaPontaSugerida_m</code>; <code>avisos</code>; e <code>perfis</code>.</td></tr>
-    <tr><td><code>estacas[].perfis.envoltoria[]</code></td><td>Envoltória inferior da compatibilização dos furos considerados (mínimo absoluto cota a cota, com solo, família e furo de origem do mesmo furo, como na Aba 3), com <code>nFuros</code> da cota.</td></tr>
-    <tr><td><code>estacas[].perfis.media</code> / <code>mediaPorSubmodo</code></td><td>Sondagem média no submodo selecionado (<code>submodo</code> + <code>camadas</code>) e nos três submodos (2.3 em <code>coesivo</code>, <code>granular</code> e <code>intermediario</code>). Cada camada traz <code>nspt</code>, <code>nspt_real</code>, <code>solo</code>, <code>familia</code>, <code>heterogeneo</code>, <code>soloDetalhe</code> (ex.: "C: Argila Siltosa | G: Areia Siltosa"), <code>nFuros</code> e <code>origem</code>.</td></tr>
+    <tr><td><code>estacas[].perfis.envoltoria[]</code></td><td>Envoltória inferior da compatibilização dos furos considerados (mínimo absoluto cota a cota, com solo, família, <code>cor</code> e furo de origem do mesmo furo, como na Aba 3), com <code>nFuros</code> da cota.</td></tr>
+    <tr><td><code>estacas[].perfis.media</code> / <code>mediaPorSubmodo</code></td><td>Sondagem média no submodo selecionado (<code>submodo</code> + <code>camadas</code>) e nos três submodos (2.3 em <code>coesivo</code>, <code>granular</code> e <code>intermediario</code>). Cada camada traz <code>nspt</code>, <code>nspt_real</code>, <code>solo</code>, <code>familia</code>, <code>heterogeneo</code>, <code>soloDetalhe</code> (ex.: "C: Argila Siltosa | G: Areia Siltosa"), <code>nFuros</code>, <code>origem</code>, <code>cor</code> (a mais frequente entre os furos da família da camada) e <code>corDetalhe</code> (todas as cores da cota, como na Aba 3).</td></tr>
   </tbody>
 </table>
 </div>

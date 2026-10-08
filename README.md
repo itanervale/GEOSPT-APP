@@ -102,7 +102,9 @@ Cadastro dos furos de sondagem SPT.
 1. Clique em **"+ Adicionar"** na barra lateral para criar uma sondagem.
 2. Selecione uma sondagem na lista para editá-la no painel principal.
 3. Preencha, para cada furo: nome, cota de topo, profundidade final, critério de paralisação (ex.: impenetrável), nível d'água e as leituras de NSPT metro a metro.
-4. Para remover, use o botão de exclusão (com confirmação).
+4. Na coluna **Cor** (ao lado de Solo), digite a coloração do solo como está no laudo (texto livre, opcional, fora do cálculo) — serve para a obra conferir em campo se o solo escavado corresponde ao da sondagem. A extração por PDF (`FORMATO_EXTRACAO_NSPT.md`) já traz a cor.
+5. O botão **⇊ uniformizar abaixo** repete o solo e a cor da leitura em todas as leituras abaixo dela.
+6. Para remover, use o botão de exclusão (com confirmação).
 
 **Trecho impenetrável / NSPT alto:** quando o NSPT ultrapassa o limite do ensaio, o app preserva o valor real medido e marca o trecho como impenetrável — informação usada nos cálculos e no corte.
 
@@ -117,6 +119,7 @@ Alinha os furos cadastrados por cota absoluta, produzindo um perfil consolidado 
 - **Seletor de domínio** — filtra os furos por domínio geotécnico (ver Aba 4).
 - **Botão "Recalcular"** — aplica os ajustes e refaz a compatibilização.
 - **Layout em duas colunas** (em telas largas): tabela densa de valores à esquerda e perfil em SVG à direita.
+- **Cores** (informativas; a compatibilização não muda): a envoltória mostra a cor da mesma leitura do mesmo furo que deu o NSPT mínimo; **Cor (média)** mostra a cor mais frequente entre os furos da família predominante (heterogênea: uma por família, "C: … | G: …"). Derivadas em `src/domain/cores.js`, fora da engine.
 
 ### Aba 4 — Análise
 
@@ -204,15 +207,15 @@ Exportação dos resultados.
 | **XLSX** | Planilha com memoriais (uma aba por modo de cálculo + uma comparativa) e colunas de auditoria. Abre no Excel/LibreOffice. |
 | **PDF** | Documento formatado, gerado pela função de impressão do navegador (botão "Imprimir / Salvar como PDF"). Versões compacta e completa. |
 | **JSON de auditoria** | Arquivo com todos os dados de entrada e resultados, com hashes de integridade. Serve para reabrir a obra e para rastreabilidade. |
-| **Detalhamento de estacas (JSON)** | Arquivo para o app de detalhamento de estacas do TQS (`geospt_detalhamento_<obra>_<data>.json`, esquema `geospt-detalhamento-estacas` 1.0.0). Não reabre no app. Veja abaixo. |
+| **Detalhamento de estacas (JSON)** | Arquivo para o app de detalhamento de estacas do TQS (`geospt_detalhamento_<obra>_<data>.json`, esquema `geospt-detalhamento-estacas` 1.1.0). Não reabre no app. Veja abaixo. |
 
 #### Exportação para detalhamento de estacas
 
 Gerada por `src/abas/AbaSaidas/gerarDetalhamentoJSON.js` (botão na Aba 7). O app consumidor (`TQS-PYTHON\_apps\EstacaEscavada`, função `estaca_geospt.ler_exportacao`) **não calcula geotecnia**: tudo vem pronto do GeoSPT, pelas mesmas funções das Abas 3 e 6 (`prepararPerfilCalculo`, `engine.compatibilizar`, `engine.montarPerfilMedio`, filtro por domínio e `calcularModosDaEstaca` da auditoria); a engine não é alterada. Cotas e profundidades em metros (profundidade da boca do furo, positiva para baixo); campos sem valor saem `null`, listas vazias `[]`.
 
-- `sondagens[]` — dado bruto de todas as sondagens (`nspt_real` preservado, `nspt_calculo` limitado a 50, `cota_m = cotaBoca_m − profundidade_m`, NA em profundidade e cota, coordenadas, `dominioId`).
+- `sondagens[]` — dado bruto de todas as sondagens (`nspt_real` preservado, `nspt_calculo` limitado a 50, `cota_m = cotaBoca_m − profundidade_m`, NA em profundidade e cota, coordenadas, `dominioId`, `cor` de cada leitura).
 - `dominios[]` — `id`, `nome`, `furos`.
-- `estacas[]` — dados da estaca; `furosConsiderados` (domínio da estaca, ou todos); `sondagensPorDistancia` (distância 2D crescente) e `sondagemMaisProxima`; `cotaPontaSugerida_m` por modo (`envoltoria`, `perfil_medio` = 2.2, `por_furo` = furo crítico, `interpolacao`); `avisos`; `perfis.envoltoria` (com `furo` e `nFuros`), `perfis.media` (submodo selecionado em `ui.submodoPerfilMedio`, padrão `2.2_conservador`) e `perfis.mediaPorSubmodo` (2.1, 2.2 e 2.3).
+- `estacas[]` — dados da estaca; `furosConsiderados` (domínio da estaca, ou todos); `sondagensPorDistancia` (distância 2D crescente) e `sondagemMaisProxima`; `cotaPontaSugerida_m` por modo (`envoltoria`, `perfil_medio` = 2.2, `por_furo` = furo crítico, `interpolacao`); `avisos`; `perfis.envoltoria` (com `furo`, `nFuros` e `cor` da leitura de origem), `perfis.media` (camadas com `cor` e `corDetalhe`) (submodo selecionado em `ui.submodoPerfilMedio`, padrão `2.2_conservador`) e `perfis.mediaPorSubmodo` (2.1, 2.2 e 2.3).
 - Estaca sem coordenadas, sem cota de arrasamento, sem carga prevista ou com domínio vazio **não impede a exportação**: os campos dependentes saem `null` e o motivo vai em `avisos` da estaca. Sem carga prevista, a cota "neutra" mostrada na Aba 6 **não** é exportada como sugestão.
 - Formato completo (contrato com o app de detalhamento): ver o prompt `PROMPT_GEOSPT_exportacao.md` e a seção 5.7.2 do manual.
 
