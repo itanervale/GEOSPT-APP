@@ -7,7 +7,7 @@
  *   - encontrarCotaSugerida(memorial, cargaPrevista_tf)
  *   - encontrarCotaSugeridaConservadora(memDq, memAv, cargaPrevista_tf)  ← Cenário B
  *   - construirOpcoesCalculo(estaca, params)  /  opcoesParaEstaca (alias)
- *   - perfilEnvoltoriaUtil(sondagens)
+ *   - perfilEnvoltoriaUtil(sondagens, janela_m)
  *
  * Extraído fielmente das linhas 5962-5973, 6119-6129, 6385-6521, 7375-7388,
  * 7556-7586 do geospt_app.jsx. Mudança: window.GeoSPT → GeoSPT.
@@ -293,9 +293,14 @@ export function construirOpcoesCalculo(estaca, params) {
 export const opcoesParaEstaca = construirOpcoesCalculo;
 
 // ----- Perfil da envoltória (helper para por_furo / comparativo) -----
-export function perfilEnvoltoriaUtil(sondagens) {
+// janela_m: a janela de compatibilização da obra (parametros.janelaCompatibilizacao_m);
+// ausente → padrão da engine (0,5 m).
+export function perfilEnvoltoriaUtil(sondagens, janela_m) {
   if (!GeoSPT?.engine) return null;
-  const compat = GeoSPT.engine.compatibilizar(sondagens, {});
+  const compat = GeoSPT.engine.compatibilizar(
+    sondagens,
+    janela_m ? { janela_m } : {}
+  );
   return {
     compat,
     perfil: compat.resultados

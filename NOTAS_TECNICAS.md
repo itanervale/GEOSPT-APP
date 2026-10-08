@@ -932,7 +932,7 @@ oposta (buraco branco circulado de vermelho perto do SPT-01).
 CAUSA-RAIZ do "0,5 ≠ 1,5" (FINALMENTE encontrada com o JSON Exemplo_Ilustrativo.json): as
 duas areias têm espessuras DIFERENTES — SPT-05 = 1 m (cota 247,75→246,75) e SPT-04 = 2 m
 (247,82→245,82). Com limiar 1,5 a areia de 1 m do SPT-05 era detectada como lente e, por
-N�O ser recorrente *como lente* (a de SPT-04, 2 m, não era lente em 1,5), não era promovida
+NÃO ser recorrente *como lente* (a de SPT-04, 2 m, não era lente em 1,5), não era promovida
 → colapsada → SPT-05 virava só argila. Topologias distintas entre 0,5 e 1,5. Era impossível
 reproduzir com a reconstrução sintética anterior (areias iguais) — por isso o diagnóstico
 ficou em aberto no CP-13h.1. A decisão de eliminar lentes mata essa inconsistência na raiz.
@@ -1358,3 +1358,135 @@ silenciosamente ignorado (try/catch).
 Local ao navegador/máquina; não portável; não sobrevive a limpar cache; pode estar
 'off' em janela anônima. O export JSON permanece o backup forte. Sincronização entre
 dispositivos exigiria backend (fora de escopo; desproporcional ao problema atual).
+
+
+## Exportação para detalhamento de estacas (JSON) — esquema `geospt-detalhamento-estacas`
+
+### Objetivo e contrato
+Arquivo lido pelo app de detalhamento de estacas do TQS (`TQS-PYTHON\_apps\EstacaEscavada`,
+`estaca_geospt.ler_exportacao`), que desenha o perfil das sondagens ao lado da estaca e NÃO
+calcula geotecnia. Esquema próprio, versionado separadamente do `SCHEMA_VERSAO` da obra:
+1.0.0 (formato inicial) → 1.1.0 (cor do solo). Mudança de nome/tipo de campo exige avisar o
+app consumidor.
+
+### Arquitetura (engine intocada)
+- `src/abas/AbaSaidas/gerarDetalhamentoJSON.js` — gerador puro, botão na Aba 7.
+- Perfis via `prepararPerfilCalculo` (modos `envoltoria` e `perfil_medio`), a mesma abstração
+  da Aba 6; filtro por domínio via `resolverFurosParaCalculo`; distâncias via
+  `GeoSPT.util.distanciaEuclidiana`.
+- Cota sugerida por modo via `calcularModosDaEstaca` (gerarAuditoriaJSON.js, agora exportada —
+  único ajuste fora do módulo novo, sem mudança de comportamento).
+- `nFuros`, `heterogeneo` e `soloDetalhe` (= `soloPred`) vêm da linha da compatibilização da
+  mesma cota (índice cota → linha).
+
+### Decisões
+- `cotaPontaSugerida_m.perfil_medio` = submodo 2.2; `por_furo` = cota do furo crítico (menor
+  pior caso), definição da auditoria.
+- Sem carga prevista ou sem cota de arrasamento → todas as cotas sugeridas `null`. A Aba 6
+  mostra nesse caso a cota mais profunda como "referência neutra" (`sem_alvo`), que não é
+  sugestão e não é exportada.
+- Submodo 2.3 selecionado → `media.camadas` vazio + aviso; ramos em `mediaPorSubmodo`.
+- `coordenadas` sempre objeto `{x, y}` (membros `null` quando ausentes). Campos sem valor saem
+  `null`; listas vazias `[]`. Estaca incompleta não impede a exportação (motivo em `avisos`).
+
+### Testes
+`test-detalhamento.mjs`: Balsas, obra sem coordenadas/domínio, domínio com subconjunto,
+domínio vazio/inválido e cor; envoltória/média conferidas contra `compatibilizar` /
+`montarPerfilMedio` e cotas contra o cálculo da Aba 6 (E-01 envoltória = 239 m).
+
+
+## Cor do solo (informativa)
+
+### Motivação
+A obra precisa conferir em campo se o solo escavado nas estacas corresponde ao da sondagem;
+a cor do laudo é o identificador prático. A cor NÃO entra em nenhum cálculo.
+
+### Dado
+- `leitura.cor`: string ou `null` (texto livre, como no laudo). Campo aditivo: importação,
+  autosave, validação da engine e hashes já preservam campos extras das leituras; obras
+  antigas abrem com cor vazia; `SCHEMA_VERSAO` inalterado.
+- Extração por PDF: `FORMATO_EXTRACAO_NSPT.md` seção 4.1 — copiar a cor do laudo sem
+  padronizar, mesma grafia em todo o relatório, repetir em todos os metros da camada, `null`
+  se ausente, não influencia o solo canônico. (Antes, a descrição era traduzida para o solo
+  canônico e a cor se perdia.)
+- Aba 2: coluna Cor (texto livre; espaços colapsados ao sair do campo). "Uniformizar abaixo"
+  copia solo e cor (cor vazia também é copiada).
+
+### Compatibilização sem alterar a engine — `src/domain/cores.js`
+`compatibilizar` já devolve, por cota e por furo, a leitura usada (`profPorSondagem_m`), a
+família (`familiaPorSondagem`) e o NSPT (`nsptPorSondagem`). As cores são derivadas por fora:
+- **Envoltória:** cor da MESMA leitura (furo `envoltoria.furo`, profundidade
+  `profPorSondagem_m[furo]`) que deu o NSPT mínimo — mesma regra de solo/família.
+- **Média:** por família, a cor mais frequente entre os furos que entram na média daquela
+  família na cota (NSPT presente e família igual) — análogo à moda do `soloPred`. Furos sem cor
+  são ignorados; empate → a primeira na ordem dos furos (ordem da engine).
+- **Agrupamento:** `chaveCor` ignora maiúsculas, acentos e espaços extras; exibe a grafia da
+  primeira ocorrência. Não há sinônimos (o laudo usa terminologia consistente).
+- **Cota heterogênea:** `detalhe` = "C: … | G: … | I: …" (famílias presentes; "—" sem cor).
+- `coresDaCota(r, sondagens)` → `{ envoltoria, porFamilia{cor,detalhe}, predominante, detalhe }`.
+
+### Onde aparece
+Aba 3 (Cor da envoltória e Cor (média), tooltip com todas as cores e contagens); XLSX
+(Sondagens: Cor; Compatibilização: Furo (envoltória), Cor (envoltória), Cor (média), Cores na
+cota); PDF completo (Cor nas leituras e na compatibilização); PDF compacto (seção 3.2, camadas
+agrupadas por solo/cor da envoltória e cor da média); JSON de detalhamento 1.1.0 (`cor` nas
+leituras e camadas, `corDetalhe` na média — na média, `cor` é a da família da camada: em cota
+heterogênea, a escolhida pelo 2.2 ou o ramo do 2.3).
+
+### Correção junto (XLSX/PDF completo)
+As colunas "# furos", "Heterogêneo" e "Subamostrado" da compatibilização liam
+`r.metricas?.…`, campo que a engine nunca devolveu — saíam vazias / sempre "não". Passaram a
+ler `r.nFuros`, `r.heterogeneo` e `compat.metadata.cotasSubamostradas`.
+
+### Janela das saídas
+XLSX e PDFs compatibilizavam com a janela padrão (0,5 m) — corrigido na seção "XLSX e PDFs
+calculam igual à Aba 6", abaixo.
+
+### Testes
+`test-saidas-cor.mjs` (30 asserções): colunas e valores de cor no XLSX e nos PDFs, com e sem
+cor, e as colunas # furos / Heterogêneo / Subamostrado conferidas contra a engine.
+
+
+## XLSX e PDFs calculam igual à Aba 6 + correção do "por furo" e da interpolação
+
+### Problema
+XLSX e PDFs recalculavam os modos por conta própria (calcularDQ/AV direto na compatibilização
+global, `calcularPorFuroIndividual`, `calcularPorInterpolacao`), divergindo da Aba 6 em:
+(1) janela — `perfilEnvoltoriaUtil` usava a padrão (0,5 m), não
+`parametros.janelaCompatibilizacao_m`; (2) domínio — usavam todos os furos, sem o filtro do
+CP-12c; (3) arrasamento decimal — o por furo/interpolação recebiam a cota decimal, sem o
+`Math.floor` do CP-13a; (4) Modo 4 não era bloqueado em domínio com < 3 furos.
+
+### Solução
+- `src/abas/AbaSaidas/calculoSaidas.js` — `calcularModosSaida(estaca, obra, params, {incluir23})`
+  usa `prepararPerfilCalculo` + `resolverFurosParaCalculo` (como auditoria e detalhamento) e
+  devolve o formato que os geradores já consumiam; `descreverFiltro(filtro)` para os cabeçalhos.
+- XLSX (memoriais da estaca alvo), PDF compacto e PDF completo passam a usá-lo.
+- `perfilEnvoltoriaUtil(sondagens, janela_m)` — tabelas/gráficos de compatibilização das saídas
+  com a janela da obra.
+- Cabeçalhos: "Furos considerados" (domínio ou todos) + janela, no PDF (por estaca) e no XLSX
+  (Modo 1).
+
+### Inconsistência na própria Aba 6 (corrigida em `prepararPerfilCalculo`)
+- **Por furo:** `calcularPorFuroIndividual` recebia só `{ janela_m }`. Como a engine repassa
+  `opcoes` a calcularDQ/AV (sobrescrevendo só tipo, diâmetro e arrasamento), o por furo ignorava
+  coeficientes customizados, flags (desprezar último metro, redutor de ponta, limitar R_p ≤ R_l,
+  tratamento de ponta), formato quadrado (A_p/U) e a carga estrutural efetiva do CP-16 (usava a
+  tabela antiga). Agora recebe `{ ...construirOpcoesCalculo(estacaCalc, params), janela_m }`.
+  Efeito no Balsas sem customização: só na E-04 (pré-moldada), pelo limite estrutural — Q_adm DQ
+  @242 SPT-02 50,00 → 51,10 tf e SPT-05 50,00 → 57,66 tf; cotas sugeridas inalteradas; E-01
+  (regressão 32,84) intacta.
+- **Interpolação:** recebia as opções completas mas sem `janela_m` → o por furo interno usava
+  0,5 m. Agora recebe a janela da obra.
+- Propaga para Aba 6, comparativo, auditoria, JSON de detalhamento, XLSX e PDFs (todos passam
+  por `prepararPerfilCalculo`). A engine não foi alterada.
+
+### Antes, o PDF estava mais certo que a Aba 6 no por furo
+Os PDFs passavam as opções completas ao por furo (sem a janela). Alinhar as saídas à Aba 6 sem
+corrigir a Aba 6 teria regredido o PDF — por isso a correção foi feita na origem.
+
+### Testes
+`test-saidas-calculo.mjs` (28): saídas = Aba 6 nos cenários padrão (32,84), janela 1,0 m,
+domínio (sem o furo crítico SPT-01, para o filtro mudar o resultado), domínio < 3 furos (Modo 4
+bloqueado), arrasamento decimal (= floor); e o por furo com carga estrutural CP-16 (E-04),
+coeficiente customizado, flag de atrito e seção quadrada, e a interpolação com janela 1,0 m.

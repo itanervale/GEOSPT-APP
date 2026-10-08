@@ -9,10 +9,8 @@
  *   - helpers de seção/CSS importados de pdfHelpers
  * ============================================================================ */
 
-import { GeoSPT } from '@/engine/geospt-engine';
 import {
   perfilEnvoltoriaUtil,
-  opcoesParaEstaca,
   encontrarCotaSugeridaConservadora,
 } from '@/abas/AbaCapacidade/calculoHelpers';
 import {
@@ -26,8 +24,10 @@ import {
   secaoAnaliseCritica,
   tabelaMemorialModoComEnvoltoria,
   blocoEstacaCabecalho,
+  tabelaCamadasSoloCor,
 } from './pdfHelpers';
 import { svgPerfilCompatibilizado, svgCurvaCapacidade } from './pdfGraficos';
+import { calcularModosSaida, descreverFiltro } from './calculoSaidas';
 
 // Cota sugerida canônica a partir de 2 memoriais → formato {cota_m, regente, dq, av}
 function cotaCanonica(memDq, memAv, carga) {
@@ -42,88 +42,10 @@ function cotaCanonica(memDq, memAv, carga) {
   };
 }
 
-// Calcula Modos 1, 2.1, 2.2, 3, 4 da estaca (sem 2.3, que é só na versão completa)
-function calcularEstaca(estaca, sondagens, params, env) {
-  const engine = GeoSPT?.engine;
-  if (!engine || !env) return null;
-  const opc = opcoesParaEstaca(estaca, params);
-  const out = {
-    modo1: { memDq: [], memAv: [], erro: null },
-    modo2_1: { memDq: [], memAv: [], bloqueado: false },
-    modo2_2: { memDq: [], memAv: [], bloqueado: false },
-    modo3: { resultados: [], erro: null },
-    modo4: { memorial: [], erro: null },
-  };
-
-  try {
-    out.modo1.memDq = engine.calcularDQ(env.perfil, opc).memorial || [];
-    out.modo1.memAv = engine.calcularAV(env.perfil, opc).memorial || [];
-  } catch (e) {
-    out.modo1.erro = e.message;
-  }
-
-  ['2.1_predominante', '2.2_conservador'].forEach((sub, idx) => {
-    const key = 'modo2_' + (idx + 1);
-    try {
-      const r = engine.montarPerfilMedio(env.compat, sub);
-      if (r.erro) {
-        out[key].erro = r.erro;
-        return;
-      }
-      if (r.bloqueado) {
-        out[key].bloqueado = true;
-        out[key].motivo = r.motivo;
-        return;
-      }
-      if (r.perfil) {
-        out[key].memDq = engine.calcularDQ(r.perfil, opc).memorial || [];
-        out[key].memAv = engine.calcularAV(r.perfil, opc).memorial || [];
-      }
-    } catch (e) {
-      out[key].erro = e.message;
-    }
-  });
-
-  try {
-    out.modo3 = engine.calcularPorFuroIndividual(sondagens, estaca, opc);
-  } catch (e) {
-    out.modo3.erro = e.message;
-  }
-
-  if (estaca.coordenadas?.x != null && estaca.coordenadas?.y != null) {
-    try {
-      const sondagensConv = {};
-      let temCoords = true;
-      Object.entries(sondagens).forEach(([n, s]) => {
-        if (s.coordenadas?.x == null) temCoords = false;
-        sondagensConv[n] = { ...s, x: s.coordenadas?.x, y: s.coordenadas?.y };
-      });
-      if (temCoords) {
-        const estacaConv = {
-          ...estaca,
-          x: estaca.coordenadas.x,
-          y: estaca.coordenadas.y,
-        };
-        const m4 = engine.calcularPorInterpolacao(
-          sondagensConv,
-          estacaConv,
-          opc
-        );
-        if (m4.metadata?.erro) out.modo4.erro = m4.metadata.erro;
-        else {
-          out.modo4.memorial = m4.memorial || [];
-          out.modo4.metadata = m4.metadata;
-        }
-      } else {
-        out.modo4.erro = 'furos sem coordenadas';
-      }
-    } catch (e) {
-      out.modo4.erro = e.message;
-    }
-  } else {
-    out.modo4.erro = 'estaca sem coordenadas';
-  }
-  return out;
+// Calcula Modos 1, 2.1, 2.2, 3, 4 da estaca (sem 2.3, que é só na versão completa).
+// Mesmo cálculo da Aba 6 (janela da obra, filtro por domínio) — ver calculoSaidas.
+function calcularEstaca(estaca, obra, params) {
+  return calcularModosSaida(estaca, obra, params);
 }
 
 export function gerarPDFCompacto(obra, payloadJson) {
@@ -137,7 +59,7 @@ export function gerarPDFCompacto(obra, payloadJson) {
   const estacaAlvo =
     estacas.find((e) => e.nome === payloadJson.ui?.estacaSelecionada) ||
     estacas[0];
-  const env = perfilEnvoltoriaUtil(sondagens);
+  const env = perfilEnvoltoriaUtil(sondagens, params.janelaCompatibilizacao_m);
   const v = payloadJson._validacao || {};
   const compatV = v.compatibilizacao || {};
   const aterroV = v.aterroCorte || {};
@@ -146,7 +68,7 @@ export function gerarPDFCompacto(obra, payloadJson) {
     'geospt_' + slugify(nomeObra) + '_' + dataExp.replace(/\//g, '-') + '_compacto.html';
 
   const calc =
-    estacaAlvo && env ? calcularEstaca(estacaAlvo, sondagens, params, env) : null;
+    estacaAlvo && env ? calcularEstaca(estacaAlvo, obra, params) : null;
   const carga = estacaAlvo?.cargaPrevista_tf;
   const temAlvo = carga > 0;
   const cotaM1 = calc ? cotaCanonica(calc.modo1.memDq, calc.modo1.memAv, carga) : null;
@@ -235,13 +157,16 @@ ${secaoSondagensResumida(sondagens)}
 ${secaoCompatibilizacaoResumo(compatV)}
 <h3>3.1. Perfil compatibilizado (NSPT × cota)</h3>
 ${svgPerfilCompatibilizado(env?.compat?.resultados)}
+<h3>3.2. Camadas: solo e cor</h3>
+<div class="info-box">Para conferência em campo do solo escavado. A cor não entra no cálculo: na envoltória, é a da mesma leitura que deu o NSPT mínimo; na média, a mais frequente entre os furos da família predominante.</div>
+${tabelaCamadasSoloCor(env?.compat, sondagens)}
 ${secaoAnaliseCritica(aterroV)}
 
 ${
   estacaAlvo
     ? `
 <h2>5. Cálculo de Capacidade de Carga — Estaca ${escHtml(estacaAlvo.nome)}</h2>
-${blocoEstacaCabecalho(estacaAlvo, params, cotaM1, temAlvo, carga)}
+${blocoEstacaCabecalho(estacaAlvo, params, cotaM1, temAlvo, carga, calc ? descreverFiltro(calc.filtro) : null)}
 
 <h3>5.1. Resumo de todos os modos de cálculo</h3>
 <div class="info-box">Critério das cotas sugeridas: <strong>cota mais rasa onde DQ e AV atendem simultaneamente</strong> a carga prevista. Se nenhuma cota atende ambos, o modo não sugere cota.</div>

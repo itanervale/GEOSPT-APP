@@ -14,9 +14,10 @@
 
 import { GeoSPT } from '@/engine/geospt-engine';
 import { geometriaEstaca, cargaEstruturalEfetiva } from '@/domain/estacas';
+import { coresDaCota, limparCor } from '@/domain/cores';
+import { calcularModosSaida, descreverFiltro } from './calculoSaidas';
 import {
   perfilEnvoltoriaUtil,
-  opcoesParaEstaca,
   encontrarCotaSugeridaConservadora,
 } from '@/abas/AbaCapacidade/calculoHelpers';
 
@@ -121,6 +122,7 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
     'NSPT cálculo',
     'Impenetrável',
     'Solo',
+    'Cor',
     'Família',
   ]);
   Object.entries(sondagens).forEach(([nome, s]) => {
@@ -136,6 +138,7 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
         L.nspt_calculo ?? '',
         L.impenetravel ? 'sim' : 'não',
         L.solo ?? '',
+        limparCor(L.cor) ?? '',
         L.familia ?? '',
       ]);
     });
@@ -184,7 +187,7 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
   XLSX.utils.book_append_sheet(wb, criarSheet(estRows), 'Estacas');
 
   // ===== Aba: Compatibilização =====
-  const env = perfilEnvoltoriaUtil(sondagens);
+  const env = perfilEnvoltoriaUtil(sondagens, params.janelaCompatibilizacao_m);
   if (env) {
     const compatRows = [
       [
@@ -192,24 +195,35 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
         'NSPT envoltória',
         'NSPT real',
         'Impenetrável',
+        'Furo (envoltória)',
         'Solo',
+        'Cor (envoltória)',
         'Família',
+        'Cor (média)',
+        'Cores na cota',
         '# furos',
         'Heterogêneo',
         'Subamostrado',
       ],
     ];
+    // Cores: informativas, derivadas por domain/cores (compatibilização intacta).
+    const subamostradas = new Set(env.compat.metadata?.cotasSubamostradas || []);
     env.compat.resultados.forEach((r) => {
+      const cores = coresDaCota(r, sondagens);
       compatRows.push([
         r.cotaRef_m,
         r.envoltoria.nspt ?? '',
         r.envoltoria.nspt_real ?? '',
         r.envoltoria.impenetravel ? 'sim' : 'não',
+        r.envoltoria.furo ?? '',
         r.envoltoria.solo ?? '',
+        cores.envoltoria ?? '',
         r.envoltoria.familia ?? '',
-        r.metricas?.n_furos_amostrados ?? '',
-        r.metricas?.heterogeneo ? 'sim' : 'não',
-        r.metricas?.subamostrado ? 'sim' : 'não',
+        (r.heterogeneo ? cores.detalhe : cores.predominante) ?? '',
+        cores.detalhe ?? '',
+        r.nFuros ?? '',
+        r.heterogeneo ? 'sim' : 'não',
+        subamostradas.has(r.cotaRef_m) ? 'sim' : 'não',
       ]);
     });
     XLSX.utils.book_append_sheet(
@@ -224,12 +238,14 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
     estacas.find((e) => e.nome === payloadJson.ui?.estacaSelecionada) ||
     estacas[0];
   if (estacaAlvo && env) {
-    const opc = opcoesParaEstaca(estacaAlvo, params);
+    // Mesmo cálculo da Aba 6 (janela da obra, filtro por domínio) — ver calculoSaidas.
+    const calc = calcularModosSaida(estacaAlvo, obra, params);
 
     // Modo 1: Envoltória
     try {
-      const dq = engine.calcularDQ(env.perfil, opc);
-      const av = engine.calcularAV(env.perfil, opc);
+      if (calc.modo1.erro) throw new Error(calc.modo1.erro);
+      const dq = { memorial: calc.modo1.memDq };
+      const av = { memorial: calc.modo1.memAv };
       const rows = [
         ['Memorial — Modo 1: Envoltória inferior — Estaca ' + estacaAlvo.nome],
         [
@@ -252,6 +268,13 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
             'm | carga prev=' +
             (estacaAlvo.cargaPrevista_tf || '—') +
             ' tf',
+        ],
+        [
+          'Furos considerados: ' +
+            descreverFiltro(calc.filtro) +
+            ' | janela de compatibilização = ' +
+            (params.janelaCompatibilizacao_m ?? 0.5) +
+            ' m',
         ],
         [],
         [
@@ -297,10 +320,9 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
 
     // Modo 2.1: Predominante
     try {
-      const r21 = engine.montarPerfilMedio(env.compat, '2.1_predominante');
-      if (r21.perfil && !r21.bloqueado) {
-        const dq = engine.calcularDQ(r21.perfil, opc);
-        const av = engine.calcularAV(r21.perfil, opc);
+      if (!calc.modo2_1.erro && calc.modo2_1.memDq.length > 0) {
+        const dq = { memorial: calc.modo2_1.memDq };
+        const av = { memorial: calc.modo2_1.memAv };
         const rows = [
           [
             'Memorial — Modo 2.1: Perfil médio (predominante) — Estaca ' +
@@ -333,7 +355,8 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
 
     // Modo 3: Por furo individual — critério canônico (ambos atendem, mais rasa)
     try {
-      const m3 = engine.calcularPorFuroIndividual(sondagens, estacaAlvo, {});
+      if (calc.modo3.erro) throw new Error(calc.modo3.erro);
+      const m3 = calc.modo3;
       const carga = estacaAlvo.cargaPrevista_tf;
       const rows = [
         ['Memorial — Modo 3: Por furo individual — Estaca ' + estacaAlvo.nome],
@@ -394,70 +417,51 @@ export function gerarWorkbookXLSX(XLSX, obra, payloadJson) {
       /* silencioso */
     }
 
-    // Modo 4: Interpolação (precisa de coordenadas)
+    // Modo 4: Interpolação (precisa de coordenadas; bloqueado em domínio < 3 furos)
     try {
-      if (
-        estacaAlvo.coordenadas?.x != null &&
-        estacaAlvo.coordenadas?.y != null
-      ) {
-        const sondagensConv = {};
-        let temTodasCoords = true;
-        Object.entries(sondagens).forEach(([n, s]) => {
-          if (s.coordenadas?.x == null || s.coordenadas?.y == null)
-            temTodasCoords = false;
-          sondagensConv[n] = { ...s, x: s.coordenadas?.x, y: s.coordenadas?.y };
+      const m4 = calc.modo4;
+      const estacaConv = {
+        x: estacaAlvo.coordenadas?.x,
+        y: estacaAlvo.coordenadas?.y,
+      };
+      if (!m4.erro && m4.memorial?.length > 0) {
+        const rows = [
+          [
+            'Memorial — Modo 4: Interpolação por locação — Estaca ' +
+              estacaAlvo.nome,
+          ],
+          [
+            'Estaca em (x=' +
+              estacaConv.x +
+              ', y=' +
+              estacaConv.y +
+              ') · raio mín. = ' +
+              (m4.metadata?.raioMinimoUsado_m ?? '0.5') +
+              ' m',
+          ],
+          [],
+          [
+            'Cota ponta (m)',
+            'DQ Q_adm interp. (tf)',
+            'AV Q_adm interp. (tf)',
+            'Método DQ',
+            '# furos disp. DQ',
+          ],
+        ];
+        m4.memorial.forEach((m) => {
+          rows.push([
+            m.cotaPonta_m,
+            m.dq?.Qadm_interpolado_tf?.toFixed(2) ?? '',
+            m.av?.Qadm_interpolado_tf?.toFixed(2) ?? '',
+            m.dq?.metodo ?? '',
+            m.dq?.n_furos_disponiveis ?? '',
+          ]);
         });
-        const estacaConv = {
-          ...estacaAlvo,
-          x: estacaAlvo.coordenadas.x,
-          y: estacaAlvo.coordenadas.y,
-        };
-        if (temTodasCoords) {
-          const m4 = engine.calcularPorInterpolacao(
-            sondagensConv,
-            estacaConv,
-            opc
-          );
-          if (m4 && !m4.metadata?.erro && m4.memorial?.length > 0) {
-            const rows = [
-              [
-                'Memorial — Modo 4: Interpolação por locação — Estaca ' +
-                  estacaAlvo.nome,
-              ],
-              [
-                'Estaca em (x=' +
-                  estacaConv.x +
-                  ', y=' +
-                  estacaConv.y +
-                  ') · raio mín. = ' +
-                  (m4.metadata?.raioMinimoUsado_m ?? '0.5') +
-                  ' m',
-              ],
-              [],
-              [
-                'Cota ponta (m)',
-                'DQ Q_adm interp. (tf)',
-                'AV Q_adm interp. (tf)',
-                'Método DQ',
-                '# furos disp. DQ',
-              ],
-            ];
-            m4.memorial.forEach((m) => {
-              rows.push([
-                m.cotaPonta_m,
-                m.dq?.Qadm_interpolado_tf?.toFixed(2) ?? '',
-                m.av?.Qadm_interpolado_tf?.toFixed(2) ?? '',
-                m.dq?.metodo ?? '',
-                m.dq?.n_furos_disponiveis ?? '',
-              ]);
-            });
-            XLSX.utils.book_append_sheet(
-              wb,
-              criarSheet(rows),
-              'Modo 4 - Interpolação'
-            );
-          }
-        }
+        XLSX.utils.book_append_sheet(
+          wb,
+          criarSheet(rows),
+          'Modo 4 - Interpolação'
+        );
       }
     } catch (e) {
       /* silencioso */

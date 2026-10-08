@@ -12,7 +12,6 @@
 import { GeoSPT } from '@/engine/geospt-engine';
 import {
   perfilEnvoltoriaUtil,
-  opcoesParaEstaca,
   encontrarCotaSugeridaConservadora,
 } from '@/abas/AbaCapacidade/calculoHelpers';
 import {
@@ -32,6 +31,7 @@ import {
   svgPerfilCompatibilizado,
   svgCurvaCapacidade,
 } from './pdfGraficos';
+import { calcularModosSaida, descreverFiltro } from './calculoSaidas';
 
 function cotaCanonica(memDq, memAv, carga) {
   const sug = encontrarCotaSugeridaConservadora(memDq, memAv, carga);
@@ -45,117 +45,10 @@ function cotaCanonica(memDq, memAv, carga) {
   };
 }
 
-// Cálculo completo de 1 estaca, INCLUINDO Modo 2.3 (perfis paralelos)
-function calcularEstacaCompleto(estaca, sondagens, params, env) {
-  const engine = GeoSPT?.engine;
-  if (!engine || !env) return null;
-  const opc = opcoesParaEstaca(estaca, params);
-  const out = {
-    modo1: { memDq: [], memAv: [], erro: null },
-    modo2_1: { memDq: [], memAv: [], bloqueado: false },
-    modo2_2: { memDq: [], memAv: [], bloqueado: false },
-    modo2_3: { ramos: null, erro: null, avisos: [] },
-    modo3: { resultados: [], erro: null },
-    modo4: { memorial: [], erro: null },
-  };
-
-  try {
-    out.modo1.memDq = engine.calcularDQ(env.perfil, opc).memorial || [];
-    out.modo1.memAv = engine.calcularAV(env.perfil, opc).memorial || [];
-  } catch (e) {
-    out.modo1.erro = e.message;
-  }
-
-  ['2.1_predominante', '2.2_conservador'].forEach((sub, idx) => {
-    const key = 'modo2_' + (idx + 1);
-    try {
-      const r = engine.montarPerfilMedio(env.compat, sub);
-      if (r.erro) {
-        out[key].erro = r.erro;
-        return;
-      }
-      if (r.bloqueado) {
-        out[key].bloqueado = true;
-        out[key].motivo = r.motivo;
-        return;
-      }
-      if (r.perfil) {
-        out[key].memDq = engine.calcularDQ(r.perfil, opc).memorial || [];
-        out[key].memAv = engine.calcularAV(r.perfil, opc).memorial || [];
-      }
-    } catch (e) {
-      out[key].erro = e.message;
-    }
-  });
-
-  // Modo 2.3 — perfis paralelos (até 3 ramos)
-  try {
-    const r23 = engine.montarPerfilMedio(env.compat, '2.3_dois_paralelos');
-    if (r23.erro) {
-      out.modo2_3.erro = r23.erro;
-    } else {
-      out.modo2_3.ramos = {};
-      [
-        ['Coesivo', 'perfilCoesivo'],
-        ['Granular', 'perfilGranular'],
-        ['Intermediário', 'perfilIntermediario'],
-      ].forEach(([familia, chave]) => {
-        const perfilRamo = r23[chave] || [];
-        if (perfilRamo.length === 0) return;
-        try {
-          const memDq = engine.calcularDQ(perfilRamo, opc).memorial || [];
-          const memAv = engine.calcularAV(perfilRamo, opc).memorial || [];
-          out.modo2_3.ramos[familia] = { perfilRamo, memDq, memAv };
-        } catch (e) {
-          out.modo2_3.ramos[familia] = { erro: e.message };
-        }
-      });
-      out.modo2_3.avisos = r23.avisos || [];
-    }
-  } catch (e) {
-    out.modo2_3.erro = e.message;
-  }
-
-  try {
-    out.modo3 = engine.calcularPorFuroIndividual(sondagens, estaca, opc);
-  } catch (e) {
-    out.modo3.erro = e.message;
-  }
-
-  if (estaca.coordenadas?.x != null && estaca.coordenadas?.y != null) {
-    try {
-      const sondagensConv = {};
-      let temCoords = true;
-      Object.entries(sondagens).forEach(([n, s]) => {
-        if (s.coordenadas?.x == null) temCoords = false;
-        sondagensConv[n] = { ...s, x: s.coordenadas?.x, y: s.coordenadas?.y };
-      });
-      if (temCoords) {
-        const estacaConv = {
-          ...estaca,
-          x: estaca.coordenadas.x,
-          y: estaca.coordenadas.y,
-        };
-        const m4 = engine.calcularPorInterpolacao(
-          sondagensConv,
-          estacaConv,
-          opc
-        );
-        if (m4.metadata?.erro) out.modo4.erro = m4.metadata.erro;
-        else {
-          out.modo4.memorial = m4.memorial || [];
-          out.modo4.metadata = m4.metadata;
-        }
-      } else {
-        out.modo4.erro = 'furos sem coordenadas';
-      }
-    } catch (e) {
-      out.modo4.erro = e.message;
-    }
-  } else {
-    out.modo4.erro = 'estaca sem coordenadas';
-  }
-  return out;
+// Cálculo completo de 1 estaca, INCLUINDO Modo 2.3 (perfis paralelos).
+// Mesmo cálculo da Aba 6 (janela da obra, filtro por domínio) — ver calculoSaidas.
+function calcularEstacaCompleto(estaca, obra, params) {
+  return calcularModosSaida(estaca, obra, params, { incluir23: true });
 }
 
 // Bloco de auditoria com as 7 tabelas de coeficientes (custom vs padrão)
@@ -293,7 +186,7 @@ export function gerarPDFCompleto(obra, payloadJson) {
   const nomeObra = ident.nome || 'obra-sem-nome';
   const dataExp = new Date().toLocaleDateString('pt-BR');
 
-  const env = perfilEnvoltoriaUtil(sondagens);
+  const env = perfilEnvoltoriaUtil(sondagens, params.janelaCompatibilizacao_m);
   const v = payloadJson._validacao || {};
   const compatV = v.compatibilizacao || {};
   const aterroV = v.aterroCorte || {};
@@ -303,7 +196,7 @@ export function gerarPDFCompleto(obra, payloadJson) {
 
   // Pré-cálculo por estaca
   const calculos = estacas.map((e) => {
-    const calc = env ? calcularEstacaCompleto(e, sondagens, params, env) : null;
+    const calc = env ? calcularEstacaCompleto(e, obra, params) : null;
     if (!calc) return { estaca: e, calc: null };
     const carga = e.cargaPrevista_tf;
     return {
@@ -358,7 +251,7 @@ export function gerarPDFCompleto(obra, payloadJson) {
 
     secoesEstacas += `<div class="page-break"></div>
 <h2>${N}. Estaca ${escHtml(e.nome)} — Cálculo Completo</h2>
-${blocoEstacaCabecalho(e, params, c.cs1, temAlvo, carga)}`;
+${blocoEstacaCabecalho(e, params, c.cs1, temAlvo, carga, c.calc ? descreverFiltro(c.calc.filtro) : null)}`;
 
     if (!calc) {
       secoesEstacas += '<p><em>Não foi possível calcular.</em></p>';
@@ -546,7 +439,7 @@ ${secaoIdentificacao(ident)}
 ${secaoSondagensCompleta(sondagens)}
 
 <div class="page-break"></div>
-${secaoCompatibilizacaoCompleta(env?.compat, compatV)}
+${secaoCompatibilizacaoCompleta(env?.compat, compatV, sondagens)}
 <h3>3.2. Perfil compatibilizado (NSPT × cota)</h3>
 <div class="info-box small">Envoltória inferior (vermelha cheia) e médias por família (tracejadas). ★ marca pontos impenetráveis.</div>
 ${svgPerfilCompatibilizado(env?.compat?.resultados)}

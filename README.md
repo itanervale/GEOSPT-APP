@@ -177,7 +177,7 @@ Cálculo da capacidade de carga da estaca selecionada, com Décourt-Quaresma e A
 |------|-----------|
 | **Envoltória** | Usa a envoltória inferior (mais conservadora) dos furos. |
 | **Perfil médio** | Usa um perfil médio das sondagens, com submodos (ex.: conservador). |
-| **Por furo** | Calcula a capacidade furo a furo, individualmente. |
+| **Por furo** | Calcula a capacidade furo a furo, individualmente (com as mesmas opções de cálculo da estaca: coeficientes, flags de ponta/atrito, formato e carga estrutural). |
 | **Interpolação** | Interpola entre furos conforme a posição da estaca, com pesos por cota. |
 
 Há ainda uma aba **Comparativo**, que coloca os modos lado a lado para análise.
@@ -204,9 +204,10 @@ Exportação dos resultados.
 
 | Formato | Conteúdo |
 |---------|----------|
-| **XLSX** | Planilha com memoriais (uma aba por modo de cálculo + uma comparativa) e colunas de auditoria. Abre no Excel/LibreOffice. |
-| **PDF** | Documento formatado, gerado pela função de impressão do navegador (botão "Imprimir / Salvar como PDF"). Versões compacta e completa. |
-| **JSON de auditoria** | Arquivo com todos os dados de entrada e resultados, com hashes de integridade. Serve para reabrir a obra e para rastreabilidade. |
+| **XLSX** | Planilha com memoriais (uma aba por modo de cálculo + uma comparativa) e colunas de auditoria. Leituras e compatibilização trazem a **cor** do solo (envoltória, média e todas as cores da cota). Abre no Excel/LibreOffice. |
+| **PDF** | Documento formatado, gerado pela função de impressão do navegador (botão "Imprimir / Salvar como PDF"). Versões compacta e completa. O completo traz a cor nas leituras e na compatibilização; o compacto, uma tabela de camadas com solo e cor (para conferência em campo). |
+| **JSON (obra)** | Todos os dados de entrada, com hashes de integridade. É a "obra salva": reabre no app (botão Importar). |
+| **JSON de auditoria** | Registro datado dos resultados (os 4 modos por estaca + comparativo, com a cota sugerida). Para rastreabilidade — não reabre no app. |
 | **Detalhamento de estacas (JSON)** | Arquivo para o app de detalhamento de estacas do TQS (`geospt_detalhamento_<obra>_<data>.json`, esquema `geospt-detalhamento-estacas` 1.1.0). Não reabre no app. Veja abaixo. |
 
 #### Exportação para detalhamento de estacas
@@ -215,9 +216,9 @@ Gerada por `src/abas/AbaSaidas/gerarDetalhamentoJSON.js` (botão na Aba 7). O ap
 
 - `sondagens[]` — dado bruto de todas as sondagens (`nspt_real` preservado, `nspt_calculo` limitado a 50, `cota_m = cotaBoca_m − profundidade_m`, NA em profundidade e cota, coordenadas, `dominioId`, `cor` de cada leitura).
 - `dominios[]` — `id`, `nome`, `furos`.
-- `estacas[]` — dados da estaca; `furosConsiderados` (domínio da estaca, ou todos); `sondagensPorDistancia` (distância 2D crescente) e `sondagemMaisProxima`; `cotaPontaSugerida_m` por modo (`envoltoria`, `perfil_medio` = 2.2, `por_furo` = furo crítico, `interpolacao`); `avisos`; `perfis.envoltoria` (com `furo`, `nFuros` e `cor` da leitura de origem), `perfis.media` (camadas com `cor` e `corDetalhe`) (submodo selecionado em `ui.submodoPerfilMedio`, padrão `2.2_conservador`) e `perfis.mediaPorSubmodo` (2.1, 2.2 e 2.3).
+- `estacas[]` — dados da estaca; `furosConsiderados` (domínio da estaca, ou todos); `sondagensPorDistancia` (distância 2D crescente) e `sondagemMaisProxima`; `cotaPontaSugerida_m` por modo (`envoltoria`, `perfil_medio` = 2.2, `por_furo` = furo crítico, `interpolacao`); `avisos`; `perfis.envoltoria` (com `furo`, `nFuros` e `cor` da leitura de origem), `perfis.media` (submodo selecionado em `ui.submodoPerfilMedio`, padrão `2.2_conservador`; camadas com `cor` e `corDetalhe`) e `perfis.mediaPorSubmodo` (2.1, 2.2 e 2.3).
 - Estaca sem coordenadas, sem cota de arrasamento, sem carga prevista ou com domínio vazio **não impede a exportação**: os campos dependentes saem `null` e o motivo vai em `avisos` da estaca. Sem carga prevista, a cota "neutra" mostrada na Aba 6 **não** é exportada como sugestão.
-- Formato completo (contrato com o app de detalhamento): ver o prompt `PROMPT_GEOSPT_exportacao.md` e a seção 5.7.2 do manual.
+- Formato completo (contrato com o app de detalhamento): seção 5.7.2 do manual. O prompt que originou o formato (`PROMPT_GEOSPT_exportacao.md`) e o da atualização 1.1.0 (`PROMPT_TQS_detalhamento_1.1.0.md`) ficam fora do repositório.
 
 ---
 
@@ -306,8 +307,15 @@ node test-esm.mjs              # Regressão canônica (caso Balsas → 32,84 tf)
 node test-casamento.mjs        # Casamento de camadas do corte
 node test-geometria-corte.mjs  # Geometria do corte
 node test-transferencia.mjs    # Transferência de carga (AOKI 1979): N(z), σ(z), modelos A/B
-node test-detalhamento.mjs     # Exportação para detalhamento de estacas (Balsas, sem coords/domínio, domínio)
+node test-persistencia.mjs     # Autosave (localStorage)
+node test-detalhamento.mjs     # Exportação para detalhamento de estacas (inclui cor, esquema 1.1.0)
+node test-saidas-cor.mjs       # Cor do solo no XLSX e nos PDFs
+node test-saidas-calculo.mjs   # XLSX e PDFs calculam igual à Aba 6 (janela, domínio, por furo)
 ```
+
+> `test-casamento.mjs` e `test-geometria-corte.mjs` gravam um arquivo temporário em `/tmp/`
+> (caminho fixo) e só rodam assim em Linux/macOS. No Windows, rode uma cópia trocando `/tmp/`
+> por uma pasta existente (e, no `import()`, por uma URL `file:///…`).
 
 O **caso Balsas** é a regressão canônica: qualquer mudança que altere o resultado de **32,84 tf** indica quebra.
 

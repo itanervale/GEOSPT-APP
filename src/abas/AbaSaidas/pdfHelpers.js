@@ -1,4 +1,5 @@
 import { geometriaEstaca, cargaEstruturalEfetiva } from '@/domain/estacas';
+import { coresDaCota, limparCor } from '@/domain/cores';
 /* ============================================================================
  * pdfHelpers — infra compartilhada dos relatórios HTML/PDF (compacto e completo)
  *
@@ -156,7 +157,7 @@ export function secaoSondagensCompleta(sondagens) {
     const cotaTopo = s.cotaTopo_m;
     html += `<div><h4>${escHtml(n)} (cota topo ${cotaTopo ?? '—'} m)</h4>
 <table>
-  <thead><tr><th>Prof. (m)</th><th>Cota abs. (m)</th><th>NSPT</th><th>Solo</th></tr></thead>
+  <thead><tr><th>Prof. (m)</th><th>Cota abs. (m)</th><th>NSPT</th><th>Solo</th><th>Cor</th></tr></thead>
   <tbody>
     ${(s.leituras || [])
       .map((L) => {
@@ -167,7 +168,7 @@ export function secaoSondagensCompleta(sondagens) {
         const nsptDisplay = L.impenetravel
           ? `${L.nspt_calculo} <span class="badge badge-warn">imp.</span>`
           : (L.nspt_calculo ?? '—');
-        return `<tr><td class="text-mono text-right">${L.profundidade_m ?? '—'}</td><td class="text-mono text-right">${cotaAbs}</td><td class="text-mono text-right">${nsptDisplay}</td><td class="small">${escHtml(L.solo || '—')}</td></tr>`;
+        return `<tr><td class="text-mono text-right">${L.profundidade_m ?? '—'}</td><td class="text-mono text-right">${cotaAbs}</td><td class="text-mono text-right">${nsptDisplay}</td><td class="small">${escHtml(L.solo || '—')}</td><td class="small">${escHtml(limparCor(L.cor) || '—')}</td></tr>`;
       })
       .join('\n')}
   </tbody>
@@ -177,23 +178,60 @@ export function secaoSondagensCompleta(sondagens) {
   return html;
 }
 
-export function secaoCompatibilizacaoCompleta(compat, compatV) {
+export function secaoCompatibilizacaoCompleta(compat, compatV, sondagens) {
   let html =
     `<h2>3. Compatibilização (envoltória inferior, cota a cota)</h2>` +
     secaoCompatibilizacaoResumo(compatV).replace(/^<h2>[^<]+<\/h2>/, '');
   html += '<h3>3.1. Tabela cota a cota</h3>';
   html += `<table>
-<thead><tr><th>Cota (m)</th><th>NSPT envoltória</th><th>Solo</th><th>Família</th><th>NSPT real</th><th>Impen.</th><th># furos</th><th>Heterog.</th></tr></thead>
+<thead><tr><th>Cota (m)</th><th>NSPT envoltória</th><th>Furo</th><th>Solo</th><th>Cor (envoltória)</th><th>Família</th><th>Cor (média)</th><th>NSPT real</th><th>Impen.</th><th># furos</th><th>Heterog.</th></tr></thead>
 <tbody>
 ${(compat?.resultados || [])
   .map((r) => {
-    const hh = r.metricas?.heterogeneo;
-    return `<tr><td class="text-mono text-right">${r.cotaRef_m}</td><td class="text-mono text-right">${r.envoltoria.nspt ?? '—'}</td><td>${escHtml(r.envoltoria.solo || '—')}</td><td>${escHtml(r.envoltoria.familia || '—')}</td><td class="text-mono text-right">${r.envoltoria.nspt_real ?? '—'}</td><td class="text-mono text-right">${r.envoltoria.impenetravel ? 'sim' : ''}</td><td class="text-mono text-right">${r.metricas?.n_furos_amostrados ?? '—'}</td><td>${hh ? '<span class="badge badge-warn">sim</span>' : ''}</td></tr>`;
+    const hh = r.heterogeneo;
+    const cores = coresDaCota(r, sondagens || {});
+    const corMedia = hh ? cores.detalhe : cores.predominante;
+    return `<tr><td class="text-mono text-right">${r.cotaRef_m}</td><td class="text-mono text-right">${r.envoltoria.nspt ?? '—'}</td><td class="text-mono">${escHtml(r.envoltoria.furo || '—')}</td><td>${escHtml(r.envoltoria.solo || '—')}</td><td>${escHtml(cores.envoltoria || '—')}</td><td>${escHtml(r.envoltoria.familia || '—')}</td><td>${escHtml(corMedia || '—')}</td><td class="text-mono text-right">${r.envoltoria.nspt_real ?? '—'}</td><td class="text-mono text-right">${r.envoltoria.impenetravel ? 'sim' : ''}</td><td class="text-mono text-right">${r.nFuros ?? '—'}</td><td>${hh ? '<span class="badge badge-warn">sim</span>' : ''}</td></tr>`;
   })
   .join('\n')}
 </tbody>
-</table>`;
+</table>
+<div class="info-box">Cores (informativas, não entram no cálculo): na envoltória, a cor da mesma leitura do mesmo furo que deu o NSPT mínimo; na média, a cor mais frequente entre os furos da família predominante (cota heterogênea: uma por família).</div>`;
   return html;
+}
+
+// Camadas de solo e cor ao longo da compatibilização, agrupando cotas
+// consecutivas com o mesmo solo/cor da envoltória e a mesma cor da média.
+// Usado no PDF compacto (conferência em campo). Cor: domain/cores.
+export function tabelaCamadasSoloCor(compat, sondagens) {
+  const linhas = [];
+  (compat?.resultados || []).forEach((r) => {
+    if (r.envoltoria.nspt == null) return;
+    const cores = coresDaCota(r, sondagens || {});
+    const item = {
+      solo: r.envoltoria.solo || '—',
+      corEnv: cores.envoltoria || '—',
+      corMed: (r.heterogeneo ? cores.detalhe : cores.predominante) || '—',
+    };
+    const ult = linhas[linhas.length - 1];
+    if (ult && ult.solo === item.solo && ult.corEnv === item.corEnv && ult.corMed === item.corMed) {
+      ult.base = r.cotaRef_m;
+    } else {
+      linhas.push({ ...item, topo: r.cotaRef_m, base: r.cotaRef_m });
+    }
+  });
+  if (linhas.length === 0) return '<em>Sem dados</em>';
+  return `<table>
+<thead><tr><th>Cotas (m)</th><th>Solo (envoltória)</th><th>Cor (envoltória)</th><th>Cor (média)</th></tr></thead>
+<tbody>
+${linhas
+  .map(
+    (l) =>
+      `<tr><td class="text-mono text-right">${l.topo === l.base ? l.topo : l.topo + ' a ' + l.base}</td><td>${escHtml(l.solo)}</td><td>${escHtml(l.corEnv)}</td><td>${escHtml(l.corMed)}</td></tr>`
+  )
+  .join('\n')}
+</tbody>
+</table>`;
 }
 
 // Tabela do memorial Modo 1 / 2.x (cota a cota com DQ + AV)
@@ -225,7 +263,7 @@ ${(memDq || [])
 }
 
 // Bloco de identificação + cota sugerida para uma estaca
-export function blocoEstacaCabecalho(estaca, params, cotaConsM1, temAlvo, carga) {
+export function blocoEstacaCabecalho(estaca, params, cotaConsM1, temAlvo, carga, furosConsiderados) {
   return `<table>
   <tr><th style="width:25%">Tipo de estaca</th><td>${escHtml(estaca.tipoEstaca)}${
     estaca.formato === 'quadrada' ? ' — seção quadrada' : ''
@@ -258,6 +296,7 @@ export function blocoEstacaCabecalho(estaca, params, cotaConsM1, temAlvo, carga)
       <th>Limita R_p ≤ R_l</th><td>${params.limitaRpRl ? 'Sim' : 'Não'}</td></tr>
   <tr><th>Despreza atrito último 1 m</th><td>${(params.desprezaUltimoMetroAtrito ?? true) ? 'Sim' : 'Não'}</td>
       <th>Coeficientes</th><td>${params.coeficientesCustomizados ? '<span class="badge badge-warn">CUSTOMIZADOS</span>' : 'padrão'}</td></tr>
+  ${furosConsiderados ? `<tr><th>Furos considerados</th><td colspan="3">${escHtml(furosConsiderados)} · janela de compatibilização ${params.janelaCompatibilizacao_m ?? 0.5} m</td></tr>` : ''}
   ${cotaConsM1 && cotaConsM1.cota_m != null ? `<tr><th>Cota sugerida (Modo 1)</th><td class="value">${cotaConsM1.cota_m} m (limitante ${cotaConsM1.regente})</td>
       <th>Q_adm DQ / AV na cota</th><td class="value">${cotaConsM1.dq?.Qadm_final_tf?.toFixed(2) ?? '—'} / ${cotaConsM1.av?.Qadm_final_tf?.toFixed(2) ?? '—'} tf</td></tr>` : ''}
 </table>`;

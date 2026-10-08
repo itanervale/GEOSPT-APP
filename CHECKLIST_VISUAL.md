@@ -29,6 +29,8 @@ divergências para trazer ao chat.
 - [ ] Cota topo SPT-01 = 254.485; cota absoluta da leitura 1 = 253.49
 - [ ] Coordenadas visíveis (SPT-05 em 12.5, 12.5)
 - [ ] Testar modal NSPT > 50: inserir um valor alto → confirma, preserva nspt_real, marca impenetrável
+- [ ] Coluna **Cor** ao lado de Solo: digitar "vermelha" numa leitura → fica salva (trocar de furo e voltar)
+- [ ] **⇊ uniformizar abaixo** numa leitura com solo e cor → solo e cor repetidos até o fim do furo
 
 **Risco a observar:** o modal NSPT>50 (preserva real, marca impenetrável). Conferir
 que não sobrescreve o valor real.
@@ -43,6 +45,8 @@ que não sobrescreve o valor real.
 - [ ] **Perfil compatibilizado SVG renderiza** (envoltória vermelha + ★ impenetráveis)
 - [ ] Eixos legíveis (NSPT 0–50 em X, cota em Y)
 - [ ] Banner/indicador de furo crítico SPT-01
+- [ ] Com cores cadastradas: colunas **Cor** (envoltória) e **Cor (média)** preenchidas; envoltória
+      vinda de furo sem cor mostra "—"; cota heterogênea mostra "C: … | G: …" 
 
 **Risco a observar:** o SVG do perfil — eixos invertidos, pontos fora da área,
 legenda sobreposta.
@@ -95,6 +99,8 @@ Selecionar E-01 (carga 50 tf). Conferir os 4 modos + comparativo.
 - [ ] **Modo 2 (Perfil médio):** submodos 2.1, 2.2, 2.3 selecionáveis; 2.2 → cota 241
 - [ ] **Modo 2.3 (perfis paralelos):** ramos Coesivo/Granular (Intermediário sem dados)
 - [ ] **Modo 3 (Por furo):** 5 furos, SPT-01 → 239 AV, SPT-03 → 243 DQ
+- [ ] **Modo 3, E-04 (pré-moldada):** Q_adm DQ na cota 242 — SPT-02 = 51,10 tf e SPT-05 = 57,66 tf
+      (limite estrutural pela hierarquia do CP-16; antes 50,00)
 - [ ] **Modo 4 (Interpolação):** cota 235 → método "furo_unico_disponivel" SEM NaN
 - [ ] **Comparativo entre modos (6.5):** tabela com pior caso por modo
 - [ ] Testar E-03 (carga 110): TODOS os modos → "nenhuma cota atende ambos"
@@ -108,13 +114,20 @@ e o caso E-03 (nenhuma cota atende) propagando corretamente em todos os modos.
 
 ## Aba 7 — Saídas
 
-- [ ] 5 cards: XLSX, JSON, JSON Auditoria, PDF Compacto, PDF Completo
+- [ ] 6 cards: XLSX, JSON, JSON Auditoria, Detalhamento de estacas, PDF Compacto, PDF Completo
 - [ ] Indicação da estaca selecionada (vem da Aba 6)
 - [ ] **XLSX:** baixa, abre no Excel, 9 abas, Modo 1 cota 239 DQ54.20/AV50.64
 - [ ] **JSON:** baixa, reabre no app (round-trip)
 - [ ] **JSON Auditoria:** baixa, E-03 com cotaSugerida_m: null
 - [ ] **PDF Compacto:** abre nova aba, perfil SVG + curva SVG, imprime
 - [ ] **PDF Completo:** abre, mini-mapa + perfis + curvas + 7 tabelas coeficientes
+- [ ] **Detalhamento de estacas:** baixa `geospt_detalhamento_…json`, `_schemaVersao` 1.1.0, 4 estacas, 5 sondagens
+- [ ] PDFs e XLSX (Modo 1) mostram "Furos considerados" e a janela; mudar a janela na Aba 3 (ex.: 1,0 m)
+      → a compatibilização e os memoriais das saídas acompanham
+- [ ] Estaca com domínio: memoriais do XLSX/PDF usam só os furos do domínio (iguais aos da Aba 6)
+- [ ] **Cor nas saídas** (com cores cadastradas): XLSX (Sondagens: coluna Cor; Compatibilização: Cor
+      envoltória/média, # furos e Heterogêneo preenchidos), PDF completo (colunas Cor), PDF compacto
+      (seção 3.2 "Camadas: solo e cor")
 - [ ] Sanitização: pôr "=2+2" no nome da obra → XLSX não interpreta como fórmula
 
 **Risco a observar:** pop-up bloqueado nos PDFs (liberar no navegador);
@@ -128,4 +141,4 @@ sanitização de injeção no XLSX.
 - [ ] Console do navegador (F12) sem erros vermelhos
 - [ ] Layout não quebra em janela estreita (responsividade)
 - [ ] Disclaimer persistente em todas as abas
-- [ ] Recarregar a página (F5) → app volta ao estado inicial (não persiste — é esperado)
+- [ ] Recarregar a página (F5) → app pergunta se deseja recuperar a obra (autosave, CP-17)

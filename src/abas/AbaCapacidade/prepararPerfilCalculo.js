@@ -140,7 +140,12 @@ export function prepararPerfilCalculo({ modo, submodo, sondagens, estaca, params
     }
 
     if (modo === 'por_furo') {
+      // Opções completas da estaca (coeficientes customizados, flags de ponta/
+      // atrito, formato da seção, carga estrutural efetiva do CP-16) + janela da
+      // obra. Antes só a janela era passada e o por furo ignorava tudo isso
+      // (ex.: limite estrutural pela tabela antiga em vez da hierarquia CP-16).
       const r = engine.calcularPorFuroIndividual(sondagens, estacaCalc, {
+        ...construirOpcoesCalculo(estacaCalc, params),
         janela_m: janela,
       });
       return {
@@ -191,7 +196,9 @@ export function prepararPerfilCalculo({ modo, submodo, sondagens, estaca, params
         x: estaca.coordenadas.x,
         y: estaca.coordenadas.y,
       };
-      const opcoes = construirOpcoesCalculo(estacaConv, params);
+      // + janela da obra (antes a interpolação usava a janela padrão de 0,5 m
+      // no cálculo por furo interno, ignorando parametros.janelaCompatibilizacao_m).
+      const opcoes = { ...construirOpcoesCalculo(estacaConv, params), janela_m: janela };
       const r = engine.calcularPorInterpolacao(sondagensConv, estacaConv, opcoes);
       if (r.metadata && r.metadata.erro) {
         return { erro: 'Engine: ' + r.metadata.erro };

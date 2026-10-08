@@ -550,7 +550,7 @@ npm run preview</code></pre>
   <tbody>
     <tr><td><strong>Envoltória</strong></td><td>Usa a envoltória inferior (a mais conservadora) dos furos.</td></tr>
     <tr><td><strong>Perfil médio</strong></td><td>Usa um perfil médio das sondagens, com submodos (veja abaixo).</td></tr>
-    <tr><td><strong>Por furo</strong></td><td>Calcula a capacidade furo a furo, individualmente.</td></tr>
+    <tr><td><strong>Por furo</strong></td><td>Calcula a capacidade furo a furo, individualmente, com as mesmas opções de cálculo da estaca (coeficientes, opções de ponta e atrito, formato da seção e carga estrutural).</td></tr>
     <tr><td><strong>Interpolação</strong></td><td>Interpola entre furos conforme a posição da estaca, com pesos por cota.</td></tr>
   </tbody>
 </table>
@@ -627,8 +627,8 @@ npm run preview</code></pre>
 <table>
   <thead><tr><th>Formato</th><th>Conteúdo</th></tr></thead>
   <tbody>
-    <tr><td><strong>&#x1F4CA; XLSX</strong></td><td>Planilha com memoriais (uma aba por modo de cálculo + uma comparativa) e colunas de auditoria. Abre no Excel/LibreOffice.</td></tr>
-    <tr><td><strong>&#x1F4C4; PDF</strong></td><td>Documento formatado em duas versões (compacta e completa), gerado pela função de impressão do navegador. O relatório abre em nova aba — use <strong>"Imprimir / Salvar como PDF"</strong>.</td></tr>
+    <tr><td><strong>&#x1F4CA; XLSX</strong></td><td>Planilha com memoriais (uma aba por modo de cálculo + uma comparativa) e colunas de auditoria. As abas de sondagens e de compatibilização trazem a <strong>cor</strong> do solo (leituras, envoltória, média e todas as cores da cota). Abre no Excel/LibreOffice.</td></tr>
+    <tr><td><strong>&#x1F4C4; PDF</strong></td><td>Documento formatado em duas versões (compacta e completa), gerado pela função de impressão do navegador. O relatório abre em nova aba — use <strong>"Imprimir / Salvar como PDF"</strong>. O completo traz a <strong>cor</strong> nas leituras de cada furo e na compatibilização; o compacto, uma tabela de <strong>camadas com solo e cor</strong> (envoltória e média), para conferência em campo.</td></tr>
     <tr><td><strong>&#x1F4BE; JSON</strong></td><td>Arquivo com todos os dados de entrada e resultados, com hashes de integridade. É o formato de "obra salva" e serve para rastreabilidade.</td></tr>
     <tr><td><strong>&#x1F3D7;&#xFE0F; Detalhamento de estacas</strong></td><td>JSON para o app de detalhamento de estacas (TQS): sondagens brutas, domínios e, para cada estaca, envoltória, sondagem média, distâncias e cota de ponta sugerida — tudo já calculado. Não reabre no GeoSPT. Veja a <a href="#s5-7-2">seção 5.7.2</a>.</td></tr>
   </tbody>
